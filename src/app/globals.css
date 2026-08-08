@@ -1,26 +1,171 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+@theme {
+  /* Superficies */
+  --color-ink: #0a0a0b;
+  --color-panel: #121214;
+  --color-panel-2: #17171a;
+  --color-raised: #212125;
+  --color-line: #29292d;
+  --color-line-2: #202024;
+
+  /* Texto */
+  --color-fg: #e9e9ec;
+  --color-muted: #8b8b93;
+  --color-dim: #6a6a72;
+
+  /* Acentos */
+  --color-accent: #8b5cf6;
+  --color-accent-2: #a78bfa;
+  --color-ok: #4ade80;
+  --color-warn: #fbbf24;
+  --color-info: #60a5fa;
+
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-jetbrains), ui-monospace, monospace;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html,
+body {
+  height: 100%;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--color-ink);
+  color: var(--color-fg);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden;
+}
+
+::selection {
+  background: color-mix(in oklab, var(--color-accent) 45%, transparent);
+}
+
+@layer components {
+  /* Contenedor brutalista: 1px hairline, esquinas casi rectas */
+  .panel {
+    background-color: color-mix(in oklab, var(--color-panel) 92%, transparent);
+    border: 1px solid var(--color-line);
+    border-radius: 4px;
+    backdrop-filter: blur(12px);
+  }
+
+  /* Titulo de seccion: 10px, uppercase, tracking amplio */
+  .panel-title {
+    font-size: 10px;
+    line-height: 1;
+    font-weight: 500;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--color-muted);
+  }
+
+  .hud {
+    background-color: color-mix(in oklab, #131316 88%, transparent);
+    border: 1px solid var(--color-line);
+    border-radius: 4px;
+    backdrop-filter: blur(14px);
+  }
+
+  /* Regulador solar: pista de 2px y pulgar rectangular, sin cromo del sistema */
+  .solar {
+    -webkit-appearance: none;
+    appearance: none;
+    height: 14px;
+    background: transparent;
+    cursor: ew-resize;
+  }
+  .solar::-webkit-slider-runnable-track {
+    height: 2px;
+    background: var(--color-line);
+  }
+  .solar::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 7px;
+    height: 14px;
+    margin-top: -6px;
+    border-radius: 1px;
+    background: var(--color-warn);
+  }
+  .solar::-moz-range-track {
+    height: 2px;
+    background: var(--color-line);
+  }
+  .solar::-moz-range-thumb {
+    width: 7px;
+    height: 14px;
+    border: 0;
+    border-radius: 1px;
+    background: var(--color-warn);
+  }
+  .solar:focus-visible::-webkit-slider-thumb {
+    outline: 1px solid var(--color-accent-2);
+    outline-offset: 1px;
+  }
+  .solar:focus-visible::-moz-range-thumb {
+    outline: 1px solid var(--color-accent-2);
+    outline-offset: 1px;
+  }
+
+  /* Cinta del tiempo: misma mecánica que el regulador solar, en violeta. El
+     pulgar es más ancho porque aquí se busca un hito concreto, no un barrido. */
+  .tape {
+    -webkit-appearance: none;
+    appearance: none;
+    height: 14px;
+    background: transparent;
+    cursor: ew-resize;
+  }
+  .tape::-webkit-slider-runnable-track {
+    height: 2px;
+    background: var(--color-line);
+  }
+  .tape::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 9px;
+    height: 14px;
+    margin-top: -6px;
+    border-radius: 1px;
+    background: var(--color-accent-2);
+  }
+  .tape::-moz-range-track {
+    height: 2px;
+    background: var(--color-line);
+  }
+  .tape::-moz-range-thumb {
+    width: 9px;
+    height: 14px;
+    border: 0;
+    border-radius: 1px;
+    background: var(--color-accent-2);
+  }
+  .tape:focus-visible::-webkit-slider-thumb {
+    outline: 1px solid var(--color-accent-2);
+    outline-offset: 1px;
+  }
+  .tape:focus-visible::-moz-range-thumb {
+    outline: 1px solid var(--color-accent-2);
+    outline-offset: 1px;
+  }
+}
+
+@layer utilities {
+  .scroll-thin {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-raised) transparent;
+  }
+  .scroll-thin::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  .scroll-thin::-webkit-scrollbar-thumb {
+    background: var(--color-raised);
+    border-radius: 3px;
+  }
+  .scroll-thin::-webkit-scrollbar-track {
+    background: transparent;
+  }
 }
