@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Canvas, useThree, type ThreeEvent } from "@react-three/fiber";
-import { OrbitControls, PerspectiveCamera } from "@react-three/drei";
+import { Environment, Lightformer, OrbitControls, PerspectiveCamera } from "@react-three/drei";
 import { clampToPlot, type Entity } from "@/lib/entities";
 import type { LiveCamera, LiveCursor } from "@/lib/portal/events";
 import type { SunState } from "@/lib/sun";
@@ -224,6 +224,27 @@ export function Viewport3D({ sun, ...props }: ViewportProps) {
 
       {/* Luz blanca, natural y artificial, gobernada por la hora de la sala */}
       <Sky sun={sun} />
+
+      {/*
+        Entorno de reflejo, montado a mano. El acero de los racks y el vidrio de
+        las aberturas necesitan algo que reflejar: sin mapa de entorno, `metalness`
+        alto se ve negro y el vidrio se ve plano.
+
+        Los presets de drei (`preset="city"`) descargan un HDRI de un CDN: fuera,
+        porque la promesa del README es WebGL ligero y porque una demo en vivo no
+        se juega a que responda un servidor ajeno. Estos lightformers se cocinan en
+        un cubemap de 128 px y con `frames={1}` se hornean una sola vez.
+      */}
+      <Environment resolution={128} frames={1}>
+        {/* Cielo: la fuente ancha de arriba */}
+        <Lightformer form="rect" intensity={2.2} position={[0, 12, 0]} rotation={[Math.PI / 2, 0, 0]} scale={[40, 40, 1]} color="#dfe7f2" />
+        {/* Ventanal al sur, el que da el brillo largo sobre el acero */}
+        <Lightformer form="rect" intensity={1.6} position={[0, 3, 16]} scale={[24, 6, 1]} color="#ffffff" />
+        {/* Rebote frío desde el norte, para que el lado en sombra no muera en negro */}
+        <Lightformer form="rect" intensity={0.7} position={[0, 4, -16]} rotation={[0, Math.PI, 0]} scale={[24, 6, 1]} color="#8ea6c4" />
+        {/* Suelo: la losa clara devuelve luz cálida por abajo */}
+        <Lightformer form="rect" intensity={0.5} position={[0, -3, 0]} rotation={[-Math.PI / 2, 0, 0]} scale={[40, 40, 1]} color="#b9b2a6" />
+      </Environment>
 
       <SceneGraph {...props} />
     </Canvas>

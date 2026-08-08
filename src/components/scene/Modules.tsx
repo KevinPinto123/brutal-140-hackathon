@@ -2,10 +2,25 @@
 
 import { Html, Line } from "@react-three/drei";
 import type { ThreeEvent } from "@react-three/fiber";
-import { MATERIAL_COLORS, extent, type Entity } from "@/lib/entities";
+import { extent, type Entity } from "@/lib/entities";
 import { entityHeat } from "@/lib/heat";
+import { ARCH_KINDS, Parts } from "./parts";
 
 const RAD = Math.PI / 180;
+
+/**
+ * Se excluye del test de impacto.
+ *
+ * El `onPointerDown` cuelga del grupo entero, no de cada pieza: un vallado de
+ * robótica es casi todo aire y agarrar un brazo por la pinza sería puntería. Pero
+ * dentro del grupo también viven adornos que no son el volumen —el disco térmico,
+ * que puede ser mucho más ancho que el módulo, y los contornos a ras de suelo—, y
+ * si atraparan el clic no se podría depositar nada al lado de un rack.
+ *
+ * El área de agarre es el colisionador invisible, y es exactamente la caja
+ * declarada de la entidad. Ni un centímetro más.
+ */
+const NO_HIT = () => null;
 
 /** Contorno a ras de suelo. `pad` lo separa para que dos halos no se pisen. */
 function Halo({
@@ -27,7 +42,7 @@ function Halo({
     [-x, y, z],
     [-x, y, -z],
   ];
-  return <Line points={points} color={color} lineWidth={1.6} />;
+  return <Line points={points} color={color} lineWidth={1.6} raycast={NO_HIT} />;
 }
 
 /** Quién tiene agarrado este volumen ahora mismo, si no soy yo. */
@@ -46,50 +61,68 @@ function Module({
   heldBy?: HeldBy;
   onGrab: (e: ThreeEvent<PointerEvent>, id: string) => void;
 }) {
-  const color = MATERIAL_COLORS[entity.material];
-  const glass = entity.material === "glass";
-  const garden = entity.material === "biophilic";
   // El equipamiento del laboratorio no es arquitectura: se lee metálico y con
   // su firma térmica dibujada en el suelo.
   const { kw, color: heat, radius } = entityHeat(entity);
+  const arch = ARCH_KINDS.has(entity.kind);
 
   return (
-    <group position={[entity.x, entity.y, entity.z]} rotation={[0, entity.rotation * RAD, 0]}>
-      <mesh
-        position={[0, entity.h / 2, 0]}
-        castShadow
-        receiveShadow
-        onPointerDown={(e) => onGrab(e, entity.id)}
-      >
+    <group
+      position={[entity.x, entity.y, entity.z]}
+      rotation={[0, entity.rotation * RAD, 0]}
+      onPointerDown={(e) => onGrab(e, entity.id)}
+    >
+      {/*
+        Colisionador: la caja declarada de la entidad, invisible. La geometría de
+        detalle también recibe el evento y lo burbujea al grupo, pero por sí sola
+        dejaría huecos —el vallado de una celda de robótica es casi todo aire— y
+        agarrar un brazo por la pinza sería un ejercicio de puntería.
+      */}
+      <mesh position={[0, entity.h / 2, 0]}>
         <boxGeometry args={[entity.w, entity.h, entity.d]} />
-        <meshStandardMaterial
-          color={color}
-          roughness={glass ? 0.15 : garden ? 0.8 : kw > 0 ? 0.35 : 0.95}
-          metalness={glass ? 0.1 : kw > 0 ? 0.65 : 0}
-          transparent={glass}
-          opacity={glass ? 0.42 : 1}
-          emissive={selected ? "#8b5cf6" : kw > 0 ? heat : "#000000"}
-          emissiveIntensity={selected ? 0.28 : kw > 0 ? Math.min(0.3, kw / 70) : 0}
-        />
+        <meshBasicMaterial transparent opacity={0} depthWrite={false} />
       </mesh>
+
+      {/* La pieza de verdad: cada tipo con su geometría */}
+      <Parts entity={entity} />
+
+      {/* Selección: una funda sobre el volumen declarado. Con geometría de varias
+          piezas ya no vale teñir «el» material, porque no hay uno solo. */}
+      {selected && (
+        <mesh position={[0, entity.h / 2, 0]} raycast={NO_HIT}>
+          <boxGeometry args={[entity.w + 0.05, entity.h + 0.05, entity.d + 0.05]} />
+          <meshStandardMaterial
+            color="#8b5cf6"
+            emissive="#8b5cf6"
+            emissiveIntensity={0.45}
+            transparent
+            opacity={0.1}
+            depthWrite={false}
+          />
+        </mesh>
+      )}
 
       {/* Firma térmica: el disco crece con los kW disipados. */}
       {kw > 0 && (
-        <mesh position={[0, 0.014, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <mesh position={[0, 0.014, 0]} rotation={[-Math.PI / 2, 0, 0]} raycast={NO_HIT}>
           <ringGeometry args={[radius * 0.82, radius, 56]} />
           <meshBasicMaterial color={heat} transparent opacity={0.42} depthWrite={false} />
         </mesh>
       )}
 
-      {/* Aristas: el concreto expuesto se lee por su canto */}
-      <Line
-        points={edges(entity.w, entity.h, entity.d)}
-        color={garden ? "#86efac" : kw > 0 ? heat : "#f3f1ee"}
-        lineWidth={0.8}
-        transparent
-        opacity={kw > 0 ? 0.5 : 0.28}
-        segments
-      />
+      {/* Aristas: el concreto expuesto se lee por su canto. Solo la arquitectura
+          las lleva; alrededor de un equipo, esa caja parecería una jaula. */}
+      {arch && (
+        <Line
+          points={edges(entity.w, entity.h, entity.d)}
+          color="#f3f1ee"
+          lineWidth={0.8}
+          transparent
+          opacity={0.26}
+          segments
+          raycast={NO_HIT}
+        />
+      )}
 
       {(selected || dragging) && <Halo entity={entity} />}
 
