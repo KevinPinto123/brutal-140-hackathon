@@ -1,0 +1,1559 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>BRUTAL-140 · Pitch</title>
+<meta name="description" content="Pitch deck de BRUTAL-140 para The Realtime Hackathon by Portal." />
+<meta name="theme-color" content="#0a0a0b" />
+<style>
+/* ==========================================================================
+   BRUTAL-140 · deck
+   Hereda los tokens de src/app/globals.css para que el deck y el producto
+   sean el mismo sistema. Tema oscuro unico y deliberado: es la superficie
+   proyectada de una app WebGL brutalista; un tema claro rompe la identidad.
+   Sin webfonts: la CSP de artifacts y el wifi de un hackathon los bloquean,
+   y un fallback silencioso es peor que una pila del sistema elegida a mano.
+   ========================================================================== */
+
+:root {
+  color-scheme: dark;
+
+  --ink: #0a0a0b;
+  --panel: #121214;
+  --panel-2: #17171a;
+  --raised: #212125;
+  --line: #29292d;
+  --line-2: #202024;
+
+  --fg: #e9e9ec;
+  --muted: #8b8b93;
+  --dim: #6a6a72;
+
+  --accent: #8b5cf6;
+  --accent-2: #a78bfa;
+  --ok: #4ade80;
+  --warn: #fbbf24;
+  --info: #60a5fa;
+
+  --sans: ui-sans-serif, system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, "Cascadia Mono", Consolas, "SF Mono", monospace;
+
+  /* Escala tipografica: un solo sistema, anclado al viewport para que el
+     mismo archivo sirva en un portatil y en un proyector de sala. */
+  --fs-eyebrow: clamp(9px, 0.62vw, 12px);
+  --fs-micro:   clamp(10px, 0.7vw, 13px);
+  --fs-small:   clamp(12px, 0.84vw, 16px);
+  --fs-body:    clamp(14px, 1.02vw, 20px);
+  --fs-lead:    clamp(16px, 1.26vw, 25px);
+  --fs-h2:      clamp(23px, 2.3vw, 45px);
+  --fs-h1:      clamp(36px, 4.1vw, 80px);
+  --fs-mega:    clamp(52px, 7.2vw, 142px);
+
+  --gap: clamp(10px, 1.1vw, 22px);
+  --pad-x: clamp(20px, 3.4vw, 68px);
+  --pad-y: clamp(16px, 2.6vw, 48px);
+
+  --bar: clamp(30px, 2.6vw, 42px);
+  --rail: clamp(46px, 4.6vw, 78px);
+}
+
+* { box-sizing: border-box; }
+
+html, body { height: 100%; }
+
+body {
+  margin: 0;
+  background: var(--ink);
+  color: var(--fg);
+  font-family: var(--sans);
+  font-size: var(--fs-body);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden;
+}
+
+::selection { background: color-mix(in oklab, var(--accent) 45%, transparent); }
+
+:focus-visible {
+  outline: 1px solid var(--accent-2);
+  outline-offset: 2px;
+}
+
+/* ---------- primitivas heredadas de la app ---------------------------- */
+
+.panel {
+  background-color: color-mix(in oklab, var(--panel) 92%, transparent);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+}
+
+.eyebrow {
+  font-size: var(--fs-eyebrow);
+  line-height: 1;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+  font-family: var(--sans);
+}
+
+.mono {
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5em;
+  padding: 0.32em 0.62em;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  font-family: var(--mono);
+  font-size: var(--fs-eyebrow);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.chip[data-tone="cut"]    { color: var(--warn); border-color: color-mix(in oklab, var(--warn) 40%, var(--line)); }
+.chip[data-tone="accent"] { color: var(--accent-2); border-color: color-mix(in oklab, var(--accent) 45%, var(--line)); }
+.chip[data-tone="ok"]     { color: var(--ok); border-color: color-mix(in oklab, var(--ok) 35%, var(--line)); }
+
+/* ---------- armazon: barra / escenario / barra ------------------------ */
+
+.deck {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  grid-template-rows: var(--bar) 1fr var(--bar);
+}
+
+.topbar,
+.botbar {
+  display: flex;
+  align-items: center;
+  gap: clamp(8px, 1vw, 18px);
+  padding: 0 clamp(10px, 1.2vw, 20px);
+  min-width: 0;
+}
+.topbar { border-bottom: 1px solid var(--line-2); }
+.botbar { border-top: 1px solid var(--line-2); }
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 0.6em;
+  font-family: var(--mono);
+  font-size: var(--fs-micro);
+  letter-spacing: 0.08em;
+  color: var(--fg);
+  white-space: nowrap;
+}
+.brand b { font-weight: 600; }
+.brand .sq {
+  width: 0.72em;
+  height: 0.72em;
+  background: var(--fg);
+  border-radius: 1px;
+  flex: none;
+}
+.brand .sep { color: var(--line); }
+.brand .room { color: var(--dim); }
+
+.spacer { flex: 1 1 auto; min-width: 0; }
+
+.topbar .section {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.botbar { font-family: var(--mono); font-size: var(--fs-micro); color: var(--dim); }
+.botbar .time { color: var(--muted); letter-spacing: 0.06em; }
+.botbar .count { color: var(--fg); letter-spacing: 0.1em; font-variant-numeric: tabular-nums; }
+
+.keys {
+  display: flex;
+  gap: clamp(8px, 1vw, 16px);
+  color: var(--dim);
+  font-size: var(--fs-eyebrow);
+  letter-spacing: 0.06em;
+}
+.keys span { white-space: nowrap; }
+.keys kbd {
+  font-family: var(--mono);
+  color: var(--muted);
+  border: 1px solid var(--line);
+  border-radius: 2px;
+  padding: 0 0.3em;
+  margin-right: 0.35em;
+}
+
+/* ---------- escenario -------------------------------------------------- */
+
+.stage {
+  position: relative;
+  display: grid;
+  grid-template-columns: var(--rail) 1fr;
+  min-height: 0;
+}
+
+/* ---------- rail: la parcela + la escala del recorrido ----------------- */
+
+.rail {
+  border-right: 1px solid var(--line-2);
+  display: grid;
+  grid-template-rows: auto 1fr;
+  gap: clamp(8px, 1vw, 16px);
+  padding: clamp(10px, 1.2vw, 18px) 0 clamp(10px, 1.2vw, 18px);
+  min-height: 0;
+  justify-items: center;
+}
+
+/* La parcela real, a escala 7:20, en el margen de todas las diapositivas. */
+.rail-plot {
+  width: clamp(15px, 1.5vw, 25px);
+  aspect-ratio: 7 / 20;
+  border: 1px solid var(--line);
+  border-radius: 1px;
+}
+
+.ticks {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  min-height: 0;
+  padding: 2px 0;
+}
+
+.tick {
+  appearance: none;
+  -webkit-appearance: none;
+  background: none;
+  border: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+.tick i {
+  display: block;
+  height: 1px;
+  width: 26%;
+  background: var(--line);
+  transition: width 0.18s ease, background-color 0.18s ease;
+}
+.tick:hover i { width: 44%; background: var(--muted); }
+.tick[aria-current="true"] i { width: 62%; background: var(--accent-2); height: 2px; }
+.tick[data-cut="1"] i { width: 14%; }
+
+/* ---------- diapositivas ---------------------------------------------- */
+
+.slides {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+}
+
+.slide {
+  position: absolute;
+  inset: 0;
+  padding: var(--pad-y) var(--pad-x);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: var(--gap);
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: thin;
+  scrollbar-color: var(--raised) transparent;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(6px);
+  transition: opacity 0.22s ease, transform 0.22s ease, visibility 0s linear 0.22s;
+}
+.slide::-webkit-scrollbar { width: 6px; }
+.slide::-webkit-scrollbar-thumb { background: var(--raised); border-radius: 3px; }
+.slide::-webkit-scrollbar-track { background: transparent; }
+
+.slide.is-active {
+  opacity: 1;
+  visibility: visible;
+  transform: none;
+  transition: opacity 0.22s ease, transform 0.22s ease, visibility 0s;
+}
+
+.wrap {
+  width: 100%;
+  max-width: min(1180px, 100%);
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap);
+}
+.wrap[data-w="wide"] { max-width: 100%; }
+
+/* ---------- tipografia de diapositiva --------------------------------- */
+
+h1, h2, h3, p, ul, ol, figure, table { margin: 0; }
+
+.h1 {
+  font-size: var(--fs-h1);
+  font-weight: 650;
+  line-height: 0.98;
+  letter-spacing: -0.035em;
+  text-wrap: balance;
+}
+.h2 {
+  font-size: var(--fs-h2);
+  font-weight: 600;
+  line-height: 1.08;
+  letter-spacing: -0.02em;
+  text-wrap: balance;
+  max-width: 22ch;
+}
+.h2[data-w="wide"] { max-width: 34ch; }
+
+.mega {
+  font-size: var(--fs-mega);
+  font-weight: 700;
+  line-height: 0.86;
+  letter-spacing: -0.055em;
+  text-wrap: balance;
+}
+
+.lead {
+  font-size: var(--fs-lead);
+  line-height: 1.4;
+  color: var(--fg);
+  max-width: 44ch;
+  text-wrap: pretty;
+}
+.sub {
+  font-size: var(--fs-lead);
+  line-height: 1.35;
+  color: var(--muted);
+  font-weight: 400;
+  max-width: 40ch;
+}
+
+.body { color: var(--muted); max-width: 62ch; text-wrap: pretty; }
+.body strong { color: var(--fg); font-weight: 600; }
+.body code, .body .k { font-family: var(--mono); font-size: 0.88em; color: var(--accent-2); }
+
+.rule { height: 1px; background: var(--line-2); border: 0; width: 100%; }
+
+.stack { display: flex; flex-direction: column; gap: var(--gap); }
+.stack[data-gap="s"] { gap: calc(var(--gap) * 0.5); }
+
+/* ---------- listas ------------------------------------------------------ */
+
+.list {
+  list-style: none;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--gap) * 0.72);
+  max-width: 78ch;
+}
+/* Marcador absoluto, no una columna de grid: en un contenedor grid cada hijo
+   se vuelve item propio, asi que un <li> con <strong> + texto se partiria en
+   dos celdas y el texto acabaria envuelto en la columna del guion. */
+.list > li {
+  position: relative;
+  padding-left: clamp(16px, 1.5vw, 26px);
+  color: var(--muted);
+  text-wrap: pretty;
+}
+.list > li::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0.72em;
+  width: clamp(5px, 0.5vw, 8px);
+  height: 1px;
+  background: var(--accent);
+}
+.list > li strong { color: var(--fg); font-weight: 600; }
+.list > li code, .list > li .k { font-family: var(--mono); font-size: 0.86em; color: var(--accent-2); }
+
+.list[data-num] { counter-reset: n; }
+.list[data-num] > li { padding-left: clamp(28px, 2.5vw, 46px); }
+.list[data-num] > li::before {
+  counter-increment: n;
+  content: counter(n, decimal-leading-zero);
+  top: 0;
+  width: auto;
+  height: auto;
+  background: none;
+  font-family: var(--mono);
+  font-size: var(--fs-micro);
+  line-height: 1.85;
+  color: var(--dim);
+  letter-spacing: 0.04em;
+}
+
+/* ---------- tablas ------------------------------------------------------ */
+
+.tablewrap { overflow-x: auto; width: 100%; scrollbar-width: thin; }
+
+table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: var(--fs-small);
+}
+th, td {
+  text-align: left;
+  vertical-align: top;
+  padding: 0.66em 1em 0.66em 0;
+  border-bottom: 1px solid var(--line-2);
+  text-wrap: pretty;
+}
+tr:last-child th, tr:last-child td { border-bottom: 0; }
+th {
+  color: var(--fg);
+  font-weight: 600;
+  white-space: nowrap;
+}
+td { color: var(--muted); }
+td strong, th strong { color: var(--fg); font-weight: 600; }
+td .k, th .k, td code {
+  font-family: var(--mono);
+  font-size: 0.9em;
+  color: var(--accent-2);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+thead th {
+  color: var(--muted);
+  font-size: var(--fs-eyebrow);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  font-weight: 500;
+  border-bottom-color: var(--line);
+  padding-bottom: 0.8em;
+}
+table[data-fixed] { table-layout: fixed; }
+table[data-fixed] th:first-child { width: 34%; }
+
+/* ---------- la parcela, a escala -------------------------------------- */
+
+.plotfig {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  grid-template-rows: auto 1fr;
+  gap: clamp(6px, 0.7vw, 12px);
+  height: clamp(180px, 34vh, 420px);
+  justify-items: start;
+}
+.dim-top {
+  grid-column: 1;
+  grid-row: 1;
+  align-self: end;
+  display: flex;
+  align-items: center;
+  gap: 0.6em;
+  width: 100%;
+}
+.dim-top .bar { flex: 1 1 auto; height: 1px; background: var(--line); }
+.dim-right {
+  grid-column: 2;
+  grid-row: 2;
+  display: flex;
+  align-items: center;
+  gap: 0.6em;
+  flex-direction: column;
+  padding-left: clamp(4px, 0.5vw, 10px);
+}
+.dim-right .bar { flex: 1 1 auto; width: 1px; background: var(--line); }
+.dim-right .lbl { writing-mode: vertical-rl; }
+.lbl {
+  font-family: var(--mono);
+  font-size: var(--fs-micro);
+  color: var(--muted);
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.plot {
+  grid-column: 1;
+  grid-row: 2;
+  aspect-ratio: 7 / 20;
+  height: 100%;
+  border: 1px solid var(--line);
+  border-radius: 2px;
+  background:
+    linear-gradient(color-mix(in oklab, var(--accent) 5%, transparent), transparent),
+    repeating-linear-gradient(to bottom, transparent 0 calc(100% / 20 - 1px), var(--line-2) calc(100% / 20 - 1px) calc(100% / 20));
+  display: grid;
+  place-items: center;
+  position: relative;
+}
+.plot .area {
+  font-family: var(--mono);
+  font-size: var(--fs-small);
+  color: var(--fg);
+  letter-spacing: 0.06em;
+  font-variant-numeric: tabular-nums;
+  background: var(--ink);
+  padding: 0.3em 0.5em;
+  border: 1px solid var(--line);
+  border-radius: 2px;
+}
+.plot[data-ghost] { border-color: color-mix(in oklab, var(--accent) 30%, var(--line)); }
+
+.plotside {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--gap) * 0.55);
+  align-self: center;
+}
+
+/* ---------- diagrama de canales ---------------------------------------- */
+
+.channels {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr));
+  gap: var(--gap);
+  align-items: stretch;
+}
+.chan {
+  padding: clamp(12px, 1.2vw, 20px);
+  display: flex;
+  flex-direction: column;
+  gap: 0.8em;
+  min-width: 0;
+}
+.chan-head { display: flex; align-items: baseline; justify-content: space-between; gap: 1em; flex-wrap: wrap; }
+.chan-name {
+  font-family: var(--mono);
+  font-size: var(--fs-small);
+  color: var(--fg);
+  letter-spacing: 0.04em;
+}
+.chan-evts {
+  list-style: none;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.34em;
+  font-family: var(--mono);
+  font-size: var(--fs-micro);
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.chan-evts li { display: flex; justify-content: space-between; gap: 1em; }
+.chan-evts li em { font-style: normal; color: var(--dim); }
+.chan-evts li[data-by="ia"] { color: var(--accent-2); }
+.chan-evts li[data-by="sun"] em { color: var(--warn); }
+.chan-foot {
+  margin-top: auto;
+  padding-top: 0.8em;
+  border-top: 1px solid var(--line-2);
+  font-size: var(--fs-micro);
+  color: var(--dim);
+  font-family: var(--mono);
+  letter-spacing: 0.06em;
+}
+
+/* ---------- pipeline del agente ---------------------------------------- */
+
+.pipe {
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+  flex-wrap: wrap;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  overflow: hidden;
+}
+.pipe-step {
+  flex: 1 1 clamp(110px, 12vw, 200px);
+  padding: clamp(10px, 1.1vw, 18px);
+  border-right: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  gap: 0.35em;
+  min-width: 0;
+}
+.pipe-step:last-child { border-right: 0; }
+.pipe-step .n {
+  font-family: var(--mono);
+  font-size: var(--fs-eyebrow);
+  color: var(--dim);
+  letter-spacing: 0.1em;
+}
+.pipe-step .t { font-size: var(--fs-small); color: var(--fg); font-weight: 600; }
+.pipe-step .d { font-size: var(--fs-micro); color: var(--muted); line-height: 1.35; }
+.pipe-step[data-tone="det"] { background: color-mix(in oklab, var(--accent) 7%, transparent); }
+.pipe-step[data-tone="det"] .t { color: var(--accent-2); }
+
+/* ---------- cifras ------------------------------------------------------ */
+
+.stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(160px, 100%), 1fr));
+  gap: 1px;
+  background: var(--line-2);
+  border: 1px solid var(--line-2);
+  border-radius: 4px;
+  overflow: hidden;
+}
+.stat {
+  background: var(--ink);
+  padding: clamp(12px, 1.3vw, 22px);
+  display: flex;
+  flex-direction: column;
+  gap: 0.28em;
+  min-width: 0;
+}
+.stat .v {
+  font-family: var(--mono);
+  font-size: clamp(20px, 2.1vw, 40px);
+  font-weight: 600;
+  color: var(--fg);
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+.stat .u { color: var(--dim); font-size: 0.5em; letter-spacing: 0; }
+.stat .l {
+  font-size: var(--fs-micro);
+  color: var(--muted);
+  line-height: 1.3;
+}
+
+/* ---------- cita / remate ---------------------------------------------- */
+
+.quote {
+  border-left: 2px solid var(--accent);
+  padding-left: clamp(12px, 1.2vw, 22px);
+  font-size: var(--fs-lead);
+  line-height: 1.35;
+  color: var(--fg);
+  max-width: 44ch;
+  text-wrap: pretty;
+}
+
+.kv {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.45em clamp(14px, 1.6vw, 30px);
+  font-size: var(--fs-small);
+  align-items: baseline;
+}
+.kv dt {
+  font-family: var(--mono);
+  font-size: var(--fs-micro);
+  color: var(--dim);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.kv dd { margin: 0; color: var(--fg); }
+
+/* ---------- diapositiva de demo ---------------------------------------- */
+
+.demo {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(14px, 1.8vw, 34px);
+  text-align: center;
+  height: 100%;
+}
+.demo .play {
+  font-size: clamp(60px, 9vw, 180px);
+  line-height: 0.8;
+  color: var(--accent);
+}
+.demo .cap {
+  font-family: var(--mono);
+  font-size: var(--fs-lead);
+  color: var(--muted);
+  letter-spacing: 0.06em;
+}
+
+/* ---------- notas del presentador -------------------------------------- */
+
+.notesbar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 40;
+  max-height: 46vh;
+  overflow-y: auto;
+  padding: clamp(14px, 1.6vw, 26px) clamp(16px, 2vw, 34px);
+  background: color-mix(in oklab, var(--panel-2) 97%, transparent);
+  border-top: 1px solid var(--line);
+  transform: translateY(101%);
+  transition: transform 0.24s ease;
+  scrollbar-width: thin;
+}
+.notesbar.is-open { transform: none; }
+.notesbar .nb-head {
+  display: flex;
+  align-items: center;
+  gap: 0.8em;
+  margin-bottom: 0.8em;
+}
+.notesbar .nb-body {
+  font-size: var(--fs-small);
+  color: var(--muted);
+  line-height: 1.55;
+  max-width: 92ch;
+  display: flex;
+  flex-direction: column;
+  gap: 0.55em;
+}
+.notesbar .nb-body strong { color: var(--fg); font-weight: 600; }
+.notesbar .nb-body em { color: var(--accent-2); font-style: italic; }
+.notesbar .nb-body .k { font-family: var(--mono); font-size: 0.9em; color: var(--fg); }
+
+/* ---------- indice ------------------------------------------------------ */
+
+.overview {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  background: color-mix(in oklab, var(--ink) 96%, transparent);
+  padding: clamp(20px, 3vw, 54px);
+  display: none;
+  flex-direction: column;
+  gap: var(--gap);
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+.overview.is-open { display: flex; }
+.ov-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(210px, 100%), 1fr));
+  gap: clamp(8px, 0.9vw, 14px);
+}
+.ov-card {
+  appearance: none;
+  -webkit-appearance: none;
+  text-align: left;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: clamp(10px, 1vw, 16px);
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5em;
+  min-height: clamp(76px, 8vw, 108px);
+  color: var(--fg);
+  font: inherit;
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+.ov-card:hover { border-color: var(--raised); background: var(--panel-2); }
+.ov-card[aria-current="true"] { border-color: var(--accent); }
+.ov-card .n {
+  font-family: var(--mono);
+  font-size: var(--fs-eyebrow);
+  color: var(--dim);
+  letter-spacing: 0.1em;
+}
+.ov-card[aria-current="true"] .n { color: var(--accent-2); }
+.ov-card .t { font-size: var(--fs-small); line-height: 1.25; text-wrap: pretty; }
+.ov-card[data-cut="1"] .t { color: var(--muted); }
+
+/* ---------- reduccion de movimiento ------------------------------------ */
+
+@media (prefers-reduced-motion: reduce) {
+  * { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; }
+  .slide { transform: none; }
+}
+
+/* ---------- pantallas estrechas / vertical ------------------------------ */
+
+@media (max-width: 720px) {
+  :root { --rail: 30px; }
+  .rail-plot { width: 12px; }
+  .keys { display: none; }
+  .h2 { max-width: none; }
+  .plotfig { height: clamp(150px, 30vh, 260px); }
+}
+
+/* ---------- impresion: plan B en PDF ------------------------------------ */
+
+@media print {
+  @page { size: 297mm 167mm; margin: 0; }
+  :root { --fs-h1: 42px; --fs-mega: 62px; --fs-h2: 26px; --fs-body: 14px; }
+  html, body { height: auto; overflow: visible; background: #0a0a0b; }
+  body { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+  .deck { position: static; display: block; }
+  .topbar, .botbar, .rail, .notesbar, .overview { display: none !important; }
+  .stage { display: block; }
+  .slides { position: static; }
+  .slide {
+    position: static;
+    opacity: 1;
+    visibility: visible;
+    transform: none;
+    overflow: visible;
+    height: 167mm;
+    break-after: page;
+    page-break-after: always;
+    border-bottom: 1px solid var(--line-2);
+  }
+  .slide:last-child { break-after: auto; page-break-after: auto; }
+}
+</style>
+</head>
+<body>
+
+<div class="deck">
+
+  <!-- ================= barra superior ================= -->
+  <header class="topbar">
+    <div class="brand">
+      <span class="sq" aria-hidden="true"></span>
+      <b>BRUTAL-140</b>
+      <span class="sep" aria-hidden="true">/</span>
+      <span class="room">sala lab_140</span>
+    </div>
+    <span class="spacer"></span>
+    <span class="eyebrow section" id="section">Portada</span>
+    <span class="spacer"></span>
+    <span class="chip" data-tone="cut" id="chip-cut" hidden>corte 3 min</span>
+    <span class="chip" id="chip-flag" hidden>cortar primero</span>
+  </header>
+
+  <!-- ================= escenario ================= -->
+  <div class="stage">
+
+    <nav class="rail" aria-label="Recorrido del deck">
+      <div class="rail-plot" title="La parcela: 7 x 20 m, a escala" aria-hidden="true"></div>
+      <div class="ticks" id="ticks"></div>
+    </nav>
+
+    <main class="slides" id="slides">
+
+      <!-- ---------- 01 ---------- -->
+      <section class="slide" data-eyebrow="Portada" data-title="BRUTAL-140" data-time="0:00 – 0:15">
+        <div class="wrap" data-w="wide">
+          <div style="display:grid; grid-template-columns: 1fr auto; gap: clamp(20px, 4vw, 80px); align-items:center;">
+            <div class="stack">
+              <span class="eyebrow">The Realtime Hackathon by Portal · Agosto 2026</span>
+              <h1 class="mega">BRUTAL&#8209;140</h1>
+              <p class="sub">Motor espacial colaborativo con IA</p>
+              <hr class="rule" />
+              <p class="lead"><strong>140 m². 7 × 20 metros.</strong> Tres humanos y un agente autónomo diseñando el mismo edificio al mismo tiempo.</p>
+              <p class="mono" style="color:var(--dim); font-size:var(--fs-micro); letter-spacing:0.1em;">Next.js · React Three Fiber · Portal · LLM</p>
+            </div>
+            <div class="plotfig" style="height: clamp(200px, 48vh, 520px);">
+              <div class="dim-top"><span class="lbl">7.00 m</span><span class="bar"></span></div>
+              <div class="plot" data-ghost><span class="area" style="color:var(--dim); border-color:var(--line-2);">vacía</span></div>
+              <div class="dim-right"><span class="bar"></span><span class="lbl">20.00 m</span><span class="bar"></span></div>
+            </div>
+          </div>
+        </div>
+        <template class="notes">
+          <p>No leas la diapositiva. Di la frase que la resume: <em>«Vamos a meter a una IA dentro de un plano, no al lado de él.»</em></p>
+          <p>Deja el título 3 segundos en pantalla y pasa.</p>
+        </template>
+      </section>
+
+      <!-- ---------- 02 ---------- -->
+      <section class="slide" data-eyebrow="El problema" data-title="El diseño espacial sigue siendo de un solo jugador" data-time="0:15 – 0:50">
+        <div class="wrap">
+          <div class="stack">
+            <span class="eyebrow">El problema</span>
+            <h2 class="h2" data-w="wide">El diseño espacial sigue siendo de un solo jugador</h2>
+            <hr class="rule" />
+            <ul class="list">
+              <li><strong>Las herramientas son individuales.</strong> Revit, SketchUp, AutoCAD: un archivo, un dueño, un turno. La colaboración es enviar capturas por WhatsApp.</li>
+              <li><strong>La IA está en la barra lateral.</strong> Genera imágenes bonitas o texto. No conoce tus coordenadas, no respeta tus metros, no puede tocar tu geometría.</li>
+              <li><strong>El conflicto se descubre tarde.</strong> El choque térmico, el pasillo bloqueado y la fachada tapada aparecen en obra, no en el lienzo.</li>
+            </ul>
+          </div>
+        </div>
+        <template class="notes">
+          <p>Este es el dolor. Sé concreto, no filosófico.</p>
+          <p>Frase de remate: <em>«Le pides a un LLM que diseñe un laboratorio y te devuelve un párrafo. No te devuelve un <span class="k">x, y, z</span>.»</em></p>
+        </template>
+      </section>
+
+      <!-- ---------- 03 ---------- -->
+      <section class="slide" data-eyebrow="La restricción es el producto" data-title="¿Por qué exactamente 140 m²?" data-time="0:50 – 1:20">
+        <div class="wrap" data-w="wide">
+          <div class="stack">
+            <span class="eyebrow">La restricción es el producto</span>
+            <h2 class="h2">¿Por qué exactamente 140 m²?</h2>
+          </div>
+          <div style="display:grid; grid-template-columns: auto 1fr; gap: clamp(24px, 4vw, 76px); align-items:center;">
+            <div class="plotfig">
+              <div class="dim-top"><span class="lbl">7.00 m</span><span class="bar"></span></div>
+              <div class="plot"><span class="area">140.00 m²</span></div>
+              <div class="dim-right"><span class="bar"></span><span class="lbl">20.00 m</span><span class="bar"></span></div>
+            </div>
+            <div class="plotside">
+              <dl class="kv">
+                <dt>eje x</dt><dd class="mono">[ −3.5 , 3.5 ]</dd>
+                <dt>eje z</dt><dd class="mono">[ −10 , 10 ]</dd>
+                <dt>altura</dt><dd class="mono">4.50 m libres</dd>
+              </dl>
+              <hr class="rule" />
+              <ul class="list">
+                <li>Un lienzo infinito no tiene conflictos. <strong>Un lienzo cerrado los obliga.</strong></li>
+                <li>Cada volumen que entra le quita sitio a otro. Cada decisión es una negociación <strong>entre personas y agente</strong>, en vivo.</li>
+                <li>Toda la geometría se recorta a la parcela en el modelo <span class="k">clampToPlot</span>. Ni un humano ni la IA pueden salirse: <strong>la restricción no es una advertencia de UI, es física del sistema.</strong></li>
+              </ul>
+            </div>
+          </div>
+        </div>
+        <template class="notes">
+          <p>Este es el giro conceptual del proyecto y el que más se recuerda.</p>
+          <p><em>«El realtime se nota cuando hay algo que repartir. Por eso el lienzo es pequeño a propósito.»</em></p>
+        </template>
+      </section>
+
+      <!-- ---------- 04 ---------- -->
+      <section class="slide" data-eyebrow="Qué construimos" data-title="Un lienzo 3D donde la IA es un participante más" data-time="1:20 – 1:50">
+        <div class="wrap" data-w="wide">
+          <div class="stack">
+            <span class="eyebrow">Qué construimos</span>
+            <h2 class="h2" data-w="wide">Un lienzo 3D donde la IA es un participante más</h2>
+          </div>
+          <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr)); gap: clamp(20px, 3vw, 56px);">
+            <div class="tablewrap">
+              <table data-fixed>
+                <tbody>
+                  <tr><th>Programa</th><td>Laboratorio modular de innovación: Robótica, Impresión 3D y HPC</td></tr>
+                  <tr><th>Estética</th><td>Brutalista, concreto expuesto, luz blanca</td></tr>
+                  <tr><th>Obligatorio</th><td>Jardín interno — sin él no hay dónde ventilar</td></tr>
+                  <tr><th>Sala</th><td><span class="k">lab_140</span> — todos entran a la misma</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="stack" data-gap="s">
+              <span class="eyebrow">Tres cosas que no hace ningún editor 3D colaborativo hoy</span>
+              <ol class="list" data-num>
+                <li>Tu cursor es <strong>un cuerpo a escala humana dentro de la malla</strong>, no una flecha en píxeles.</li>
+                <li><strong>El Arquitecto</strong> —el agente— tiene su propio cursor, su propia identidad y mueve tus muros.</li>
+                <li>El estado de la sala <strong>es el log de mensajes</strong>. No hay base de datos.</li>
+              </ol>
+            </div>
+          </div>
+        </div>
+        <template class="notes">
+          <p>Aquí el jurado ya tiene que querer ver la pantalla.</p>
+          <p>Enumera 1-2-3 con los dedos, sin explicarlos todavía: se explican después de la demo.</p>
+        </template>
+      </section>
+
+      <!-- ---------- 05 ---------- -->
+      <section class="slide" data-eyebrow="Demo en vivo" data-title="[ DEMO EN VIVO ]" data-time="1:50 – 3:50">
+        <div class="demo">
+          <span class="eyebrow" style="color:var(--accent-2);">Demo en vivo</span>
+          <div class="play" aria-hidden="true">▶</div>
+          <p class="cap">7 × 20 m · dos navegadores · un agente</p>
+        </div>
+        <template class="notes">
+          <p><strong>Cambia a la demo.</strong> El guion plano a plano está en <span class="k">docs/DEMO.md</span>.</p>
+          <p>Los seis latidos, en orden: <strong>presencia → conflicto térmico → la IA entra sola → aplicar → adoptar cámara → bloquear y recargar.</strong></p>
+          <p>Si algo falla, sigue hablando y pasa al vídeo pregrabado. <strong>Nunca depures en el escenario.</strong></p>
+        </template>
+      </section>
+
+      <!-- ---------- 06 ---------- -->
+      <section class="slide" data-eyebrow="Lo que acabas de ver · 1 de 3" data-title="Presencia física, no un puntero de colores" data-time="3:50 – 4:15">
+        <div class="wrap">
+          <div class="stack">
+            <span class="eyebrow">Lo que acabas de ver · 1 de 3</span>
+            <h2 class="h2" data-w="wide">Presencia física, no un puntero de colores</h2>
+            <hr class="rule" />
+            <ul class="list">
+              <li>El cursor viaja como <strong><span class="k">(x, y, z)</span> en metros</strong> por el canal de señales, y se dibuja como un avatar con ojos a <strong>1.56 m</strong> y un cono de visión en el suelo.</li>
+              <li>La <strong>cámara de cada peer también se difunde</strong> (ojo + objetivo). Por eso el avatar mira de verdad hacia donde su dueño está mirando.</li>
+              <li>Pulsar a alguien en el roster <strong>te lleva a su encuadre exacto</strong> con un vuelo de 620 ms. Ver lo que ve el otro es un clic, no una llamada de Zoom.</li>
+              <li>Cada cursor lleva encima <strong>qué volumen tiene agarrado</strong>: el resto ve el halo de color sobre esa pieza antes de que se mueva.</li>
+            </ul>
+          </div>
+        </div>
+        <template class="notes">
+          <p>Detalle que gusta a los ingenieros: agarrar o soltar una pieza <strong>salta el limitador de frecuencia</strong>, porque no es ruido de ratón, es un cambio de estado. Se ve al instante aunque el ratón esté quieto.</p>
+        </template>
+      </section>
+
+      <!-- ---------- 07 ---------- -->
+      <section class="slide" data-eyebrow="Lo que acabas de ver · 2 de 3" data-title="El Arquitecto no es un chatbot: es un participante" data-time="4:15 – 4:45">
+        <div class="wrap">
+          <div class="stack">
+            <span class="eyebrow">Lo que acabas de ver · 2 de 3</span>
+            <h2 class="h2" data-w="wide">El Arquitecto no es un chatbot: es un participante</h2>
+            <hr class="rule" />
+            <ul class="list">
+              <li>Publica <strong>desde el servidor</strong> con la clave secreta y una identidad estable, <span class="k">ai_architect</span>. La <span class="k">sk_</span> no sale nunca del backend.</li>
+              <li>Su cursor <strong>se desplaza interpolado</strong> hasta la zona en conflicto —5 waypoints, 70 ms— con estado visible: <span class="k">analizando</span> → <span class="k">corrigiendo</span> → <span class="k">observando</span>. <strong>Se ve pensar.</strong></li>
+              <li>Aparece en la lista de participantes <strong>como uno más</strong>, aunque no abra sesión de presencia: entra por su cursor y sale por TTL.</li>
+              <li>Cuando corrige, no escribe una sugerencia: <strong>emite <span class="k">geometry.correction</span> y el muro se mueve en las dos pantallas a la vez.</strong></li>
+            </ul>
+            <p class="quote">«No le preguntamos a la IA qué opina del plano. La IA está dentro del plano, con cursor propio, y todos la ven llegar.»</p>
+          </div>
+        </div>
+        <template class="notes">
+          <p>La frase clave del pitch entero está en pantalla — dila mirando al jurado, no a la diapositiva.</p>
+        </template>
+      </section>
+
+      <!-- ---------- 08 ---------- -->
+      <section class="slide" data-eyebrow="Lo que acabas de ver · 3 de 3" data-title="El log de mensajes es el estado" data-time="4:45 – 5:10">
+        <div class="wrap">
+          <div class="stack">
+            <span class="eyebrow">Lo que acabas de ver · 3 de 3</span>
+            <h2 class="h2" data-w="wide">El log de mensajes <em style="font-style:normal; color:var(--accent-2);">es</em> el estado</h2>
+            <hr class="rule" />
+            <ul class="list">
+              <li>No hay base de datos ni CRDT. La geometría se <strong>reduce del historial de la sala en orden de llegada</strong>: <span class="k">entity.upsert</span>, <span class="k">entity.remove</span>, <span class="k">state.reset</span>, <span class="k">geometry.correction</span>, <span class="k">state.lock</span>.</li>
+              <li>Recargar el navegador <strong>reconstruye el laboratorio entero</strong> desde el backfill de Portal (200 mensajes). Quien entra tarde hereda todo, incluido el cierre.</li>
+              <li>El bloqueo se aplica <strong>dentro del mismo pase de reducción</strong>: cualquier geometría posterior a un <span class="k">state.lock</span> la ignoran <strong>todos</strong> los clientes por igual. Una corrección tardía del agente no puede despertar un diseño ya congelado.</li>
+              <li>Resultado: <strong>todos los clientes convergen al mismo estado final sin negociar nada.</strong></li>
+            </ul>
+          </div>
+        </div>
+        <template class="notes">
+          <p>Si el jurado es técnico, esta es la diapositiva donde ganas.</p>
+          <p><em>«El estado final no depende de quién llegó primero ni de quién recargó. Depende del log, y el log es uno solo.»</em></p>
+        </template>
+      </section>
+
+      <!-- ---------- 09 ---------- -->
+      <section class="slide" data-eyebrow="Arquitectura" data-title="Dos canales, una decisión" data-time="5:10 – 5:35">
+        <div class="wrap" data-w="wide">
+          <div class="stack" data-gap="s">
+            <span class="eyebrow">Arquitectura</span>
+            <h2 class="h2" data-w="wide">Dos canales, una decisión</h2>
+          </div>
+          <div class="channels">
+            <div class="chan panel">
+              <div class="chan-head">
+                <span class="chan-name">lab_140</span>
+                <span class="chip" data-tone="accent">durable · history 200</span>
+              </div>
+              <ul class="chan-evts">
+                <li><span>chat</span></li>
+                <li><span>entity.upsert</span></li>
+                <li><span>entity.remove</span></li>
+                <li data-by="ia"><span>geometry.correction</span><em>← IA</em></li>
+                <li><span>state.lock</span></li>
+                <li><span>state.reset</span></li>
+                <li data-by="sun"><span>sun.set</span><em>← sol</em></li>
+              </ul>
+              <p class="chan-foot">el estado se reduce</p>
+            </div>
+            <div class="chan panel">
+              <div class="chan-head">
+                <span class="chan-name">lab_140_signals</span>
+                <span class="chip">efímero · history "none"</span>
+              </div>
+              <ul class="chan-evts">
+                <li><span>cursor</span><em>~8 Hz · TTL 8 s</em></li>
+                <li><span>entity.drag</span><em>~8 Hz · TTL 2 s</em></li>
+                <li><span>camera</span><em>~8 Hz · TTL 30 s</em></li>
+                <li data-by="sun"><span>sun</span><em>~8 Hz · en arrastre</em></li>
+              </ul>
+              <p class="chan-foot">se pinta y se olvida</p>
+            </div>
+          </div>
+          <div class="stack" data-gap="s">
+            <p class="body"><strong>Por qué separados:</strong> el SDK descarta los mensajes efímeros entrantes, así que la única difusión fiable es el mensaje persistente. Si el cursor viajara por el canal de estado, <strong>8 señales por segundo expulsarían la geometría de la ventana de historial</strong> y recargar dejaría la parcela vacía. <strong>Coste de esa decisión: cero</strong> — un cliente nuevo abre el canal de señales con <span class="k">history: "none"</span> y no hereda ni un byte de ruido.</p>
+            <p class="body"><strong>Y el patrón se reutiliza:</strong> la <strong>hora solar es estado de sala</strong>. Mientras alguien arrastra el control, la hora viaja por el canal efímero y todos ven el sol moverse en vivo; al soltar, se confirma como <span class="k">sun.set</span> en el canal durable. <strong>Quien recargue o entre tarde hereda la misma hora</strong>, así que el equipo discute la luz en el mismo instante del día.</p>
+          </div>
+        </div>
+        <template class="notes">
+          <p>Enseña el diagrama y quédate callado 2 segundos antes de hablar.</p>
+          <p>Este es el problema real que aparece a las 6 horas de hackathon y que casi nadie resuelve.</p>
+        </template>
+      </section>
+
+      <!-- ---------- 10 ---------- -->
+      <section class="slide" data-eyebrow="El Arquitecto por dentro" data-title="Primero mide. Después opina." data-time="5:35 – 6:05">
+        <div class="wrap" data-w="wide">
+          <div class="stack" data-gap="s">
+            <span class="eyebrow">El Arquitecto por dentro</span>
+            <h2 class="h2">Primero mide. Después opina.</h2>
+          </div>
+          <div class="pipe">
+            <div class="pipe-step"><span class="n">01</span><span class="t">Geometría</span><span class="d">El estado reducido del log</span></div>
+            <div class="pipe-step" data-tone="det"><span class="n">02</span><span class="t">Diagnóstico determinista</span><span class="d">Código con umbrales físicos. Si el LLM falla, <strong>este mismo módulo es el motor de respaldo.</strong></span></div>
+            <div class="pipe-step"><span class="n">03</span><span class="t">LLM · JSON</span><span class="d">Recibe el conflicto ya medido y decide la colocación</span></div>
+            <div class="pipe-step"><span class="n">04</span><span class="t">sanitize</span><span class="d">Todo lo que devuelve el modelo es entrada no confiable</span></div>
+            <div class="pipe-step"><span class="n">05</span><span class="t">Portal</span><span class="d">Se publica y se mueve en todas las pantallas</span></div>
+          </div>
+          <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(min(340px, 100%), 1fr)); gap: clamp(20px, 3vw, 52px);">
+            <div class="tablewrap">
+              <table>
+                <thead><tr><th>Regla</th><th>Umbral</th></tr></thead>
+                <tbody>
+                  <tr><td>Módulo caliente sin jardín cerca</td><td><span class="k">heat_kw ≥ 8</span> a más de <span class="k">4.50 m</span></td></tr>
+                  <tr><td>Clúster térmico</td><td>holgura <span class="k">&lt; 1.20 m</span></td></tr>
+                  <tr><td>Fachada larga tapada</td><td>opaco a <span class="k">&lt; 0.90 m</span> de <span class="k">x = ±3.5</span></td></tr>
+                  <tr><td>Circulación</td><td>pasillo <span class="k">≥ 1.10 m</span> en el eje Z</td></tr>
+                  <tr><td>Bioclimática</td><td>al menos <strong>un jardín</strong>, obligatorio</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="stack" data-gap="s">
+              <span class="eyebrow">Cada pieza disipa calor real</span>
+              <div class="stats">
+                <div class="stat"><span class="v">18<span class="u"> kW</span></span><span class="l">HPC</span></div>
+                <div class="stat"><span class="v">12<span class="u"> kW</span></span><span class="l">Racks</span></div>
+                <div class="stat"><span class="v">4<span class="u"> kW</span></span><span class="l">Impresión 3D</span></div>
+                <div class="stat"><span class="v">2<span class="u"> kW</span></span><span class="l">Robótica</span></div>
+              </div>
+              <p class="body">Por eso la IA mueve el HPC junto al jardín: <strong>no es una opinión estética, es ventilación.</strong></p>
+              <p class="body"><strong>Prioridad con varios conflictos:</strong> <span class="k">térmico &gt; programa &gt; circulación &gt; luz</span>. Un laboratorio de 30 kW sin jardín tiene un problema térmico, no un problema de luz.</p>
+            </div>
+          </div>
+        </div>
+        <template class="notes">
+          <p>Esta diapositiva mata la objeción «esto es un wrapper de ChatGPT».</p>
+          <p><em>«El LLM no descubre el conflicto. El LLM recibe el conflicto ya medido y decide dónde poner la pieza.»</em></p>
+        </template>
+      </section>
+
+      <!-- ---------- 11 ---------- -->
+      <section class="slide" data-eyebrow="Saneado" data-title="La IA no puede mentir sobre la parcela" data-time="opcional" data-cut="1">
+        <div class="wrap">
+          <div class="stack">
+            <div style="display:flex; align-items:center; gap:1em; flex-wrap:wrap;">
+              <span class="eyebrow">Saneado</span>
+              <span class="chip" data-tone="cut">cortar primero</span>
+            </div>
+            <h2 class="h2" data-w="wide">Todo lo que devuelve el modelo es entrada no confiable</h2>
+            <hr class="rule" />
+            <ul class="list">
+              <li><strong>Los ids deben existir.</strong> Si inventa una pieza, la corrección se descarta entera.</li>
+              <li><strong>Las coordenadas se recortan a los 7 × 20.</strong> No hay forma de sacar un muro de la parcela.</li>
+              <li><strong>La rotación se ajusta a pasos de 90°.</strong></li>
+              <li><strong>Máximo 2 correcciones por evaluación.</strong> Nada de reescribir el plano de golpe.</li>
+              <li><strong>Los textos se truncan.</strong> El chat no se convierte en un ensayo.</li>
+            </ul>
+            <p class="body">Y una regla de honestidad en la UI: el panel muestra <strong>qué motor respondió</strong> — <span class="k">gpt · openai</span> o <span class="k">heurística local</span>. <strong>No fingimos IA cuando no la hay.</strong></p>
+          </div>
+        </div>
+        <template class="notes">
+          <p>Objeción típica del jurado: <em>«¿y si alucina?»</em> → <em>«Aluciona sobre coordenadas que ya recortamos, sobre ids que ya validamos, y como mucho mueve dos piezas.»</em></p>
+        </template>
+      </section>
+
+      <!-- ---------- 12 ---------- -->
+      <section class="slide" data-eyebrow="Resiliencia" data-title="Cuatro capas de degradación, ninguna pantalla en blanco" data-time="6:05 – 6:25">
+        <div class="wrap">
+          <div class="stack">
+            <span class="eyebrow">Por qué esto no se cae en el escenario</span>
+            <h2 class="h2" data-w="wide">Cuatro capas de degradación, ninguna pantalla en blanco</h2>
+            <div class="tablewrap">
+              <table data-fixed>
+                <thead><tr><th>Si falla…</th><th>Qué pasa</th></tr></thead>
+                <tbody>
+                  <tr><td><strong>No hay clave de OpenAI</strong></td><td>El motor heurístico local responde. Mismo formato, mismas correcciones, badge honesto.</td></tr>
+                  <tr><td><strong>El LLM lanza error o devuelve basura</strong></td><td><span class="k">catch</span> → heurística. La demo no se entera.</td></tr>
+                  <tr><td><strong>Portal no está configurado</strong></td><td>El veredicto vuelve por HTTP y el panel lo pinta igual. Solo se pierde la difusión.</td></tr>
+                  <tr><td><strong>Un peer se desconecta de golpe</strong></td><td>Su cursor, arrastre y cámara caducan solos por TTL. No quedan fantasmas.</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <p class="body">La barra superior <strong>no miente</strong>: muestra el estado real del canal —<span class="k">Sincronizado</span>, <span class="k">Reconectando…</span>, <span class="k">modo degradado</span>, <span class="k">sin socket (HTTP)</span>— traducido, no maquillado.</p>
+          </div>
+        </div>
+        <template class="notes">
+          <p>Dilo con orgullo, no como disculpa: <em>«Diseñamos para que la demo funcione con el wifi del hackathon.»</em></p>
+        </template>
+      </section>
+
+      <!-- ---------- 13 ---------- -->
+      <section class="slide" data-eyebrow="Consenso" data-title="El detalle que nadie ve" data-time="opcional" data-cut="1">
+        <div class="wrap">
+          <div class="stack">
+            <div style="display:flex; align-items:center; gap:1em; flex-wrap:wrap;">
+              <span class="eyebrow">El detalle que nadie ve</span>
+              <span class="chip" data-tone="cut">cortar primero</span>
+            </div>
+            <h2 class="h2" data-w="wide">¿Quién le pregunta a la IA cuando hay tres personas en la sala?</h2>
+            <hr class="rule" />
+            <p class="body"><strong>El problema:</strong> la evaluación es automática, 2.5 s después del último cambio de geometría. Con 3 clientes abiertos, el agente hablaría 3 veces y publicaría 3 veces las mismas correcciones.</p>
+            <span class="eyebrow">La solución, sin servidor de coordinación y sin negociación</span>
+            <p class="mono" style="font-size:var(--fs-lead); color:var(--accent-2); border:1px solid var(--line); border-radius:4px; padding:0.7em 1em; background:var(--panel); width:fit-content; max-width:100%;">anfitrión = el id de participante más bajo de la sala</p>
+            <p class="body">Todos los clientes calculan lo mismo, todos llegan a la misma conclusión, <strong>solo uno dispara la petición.</strong> El agente no puede ser anfitrión de sí mismo. Con el diseño bloqueado, nadie pregunta: el estado final no se renegocia.</p>
+          </div>
+        </div>
+        <template class="notes">
+          <p>Es un consenso determinista de una línea. Si te preguntan por escalabilidad, esta es la respuesta corta.</p>
+        </template>
+      </section>
+
+      <!-- ---------- 14 ---------- -->
+      <section class="slide" data-eyebrow="Stack y números" data-title="Stack y números del build" data-time="6:25 – 6:45">
+        <div class="wrap" data-w="wide">
+          <div class="stack" data-gap="s">
+            <span class="eyebrow">Stack y números</span>
+            <h2 class="h2" data-w="wide">39 horas de build</h2>
+          </div>
+          <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(min(340px, 100%), 1fr)); gap: clamp(20px, 3vw, 52px); align-items:start;">
+            <div class="tablewrap">
+              <table data-fixed>
+                <tbody>
+                  <tr><th>Frontend / 3D</th><td>Next.js 16 · React 19 · React Three Fiber · Three.js</td></tr>
+                  <tr><th>Realtime</th><td><strong>Portal</strong> — canales, presencia, historial, publicación server-side</td></tr>
+                  <tr><th>Agente</th><td>OpenAI <span class="k">gpt-4o</span>, <span class="k">response_format: json_object</span> + evaluador heurístico propio</td></tr>
+                  <tr><th>UI</th><td>TailwindCSS 4, monocromática, HUD superpuesta al WebGL a 100 vh</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="stack" data-gap="s">
+              <div class="stats">
+                <div class="stat"><span class="v">5 250</span><span class="l">líneas de TypeScript / TSX</span></div>
+                <div class="stat"><span class="v">37</span><span class="l">archivos en <span class="k">src/</span></span></div>
+                <div class="stat"><span class="v">11</span><span class="l">tipos de evento en 2 canales</span></div>
+                <div class="stat"><span class="v">10</span><span class="l">tipos de entidad con carga térmica real</span></div>
+              </div>
+              <p class="body"><strong>~8 Hz</strong> de techo de señal, con puerta de <strong>0.08 m</strong> para el cursor y <strong>0.20 m</strong> para la cámara: <em>ancho de banda gastado solo cuando algo se movió de verdad.</em></p>
+            </div>
+          </div>
+        </div>
+        <template class="notes">
+          <p>Los números importan porque demuestran que no es una maqueta.</p>
+          <p>Menciona el techo de 8 Hz: es la diferencia entre una demo y algo que aguanta una sala llena.</p>
+        </template>
+      </section>
+
+      <!-- ---------- 15 ---------- -->
+      <section class="slide" data-eyebrow="Portal" data-title="Qué exprime de Portal" data-time="6:45 – 7:00">
+        <div class="wrap">
+          <div class="stack">
+            <span class="eyebrow">Qué exprime de Portal</span>
+            <h2 class="h2" data-w="wide">No usamos Portal como un WebSocket con marca</h2>
+            <hr class="rule" />
+            <ol class="list" data-num>
+              <li><strong>Dos canales con políticas de historial distintas</strong> para separar estado durable de señal efímera — la decisión de arquitectura de la que cuelga todo el proyecto.</li>
+              <li><strong>El historial como fuente de verdad.</strong> El backfill de 200 mensajes <em>es</em> la persistencia: sin base de datos, recargar reconstruye el laboratorio.</li>
+              <li><strong>Presencia con metadata</strong> (nombre y color) para el roster, y <strong>presencia detallada</strong> para saber quién está dentro.</li>
+              <li><strong>Publicación server-side con clave secreta</strong>, que es lo que le da al agente una identidad real en el log en vez de ser «un mensaje del navegador de alguien».</li>
+              <li><strong>Estado del canal expuesto en la UI</strong> en lugar de escondido: la sesión te dice si está degradada.</li>
+            </ol>
+          </div>
+        </div>
+        <template class="notes">
+          <p>Diapositiva para el jurado de Portal específicamente. Léela como una lista, rápido.</p>
+        </template>
+      </section>
+
+      <!-- ---------- 16 ---------- -->
+      <section class="slide" data-eyebrow="Roadmap" data-title="Hacia dónde va" data-time="—">
+        <div class="wrap">
+          <div class="stack">
+            <span class="eyebrow">Hacia dónde va</span>
+            <h2 class="h2">Roadmap</h2>
+            <div class="tablewrap">
+              <table data-fixed>
+                <tbody>
+                  <tr>
+                    <th><span class="chip" data-tone="ok">ahora</span></th>
+                    <td>Parcela fija, un programa, dos motores de evaluación, correcciones de hasta 2 piezas, <strong>hora solar compartida</strong>.</td>
+                  </tr>
+                  <tr>
+                    <th><span class="chip" data-tone="accent">entrando</span></th>
+                    <td><strong>Medición real de luz natural</strong>: se cuadricula el plano de trabajo a 0.85 m en celdas de 0.5 m —560 muestras—, se lanza un rayo al sol desde cada una y se mira qué volumen se interpone. El porcentaje del panel deja de ser un número narrado y pasa a ser un cálculo de anteproyecto <strong>con culpable y m² de sombra atribuidos</strong>.</td>
+                  </tr>
+                  <tr>
+                    <th><span class="chip">siguiente</span></th>
+                    <td>Historial de versiones navegable (el log ya lo permite: es rebobinar la reducción), voz en la sala, y que el agente <strong>proponga alternativas completas</strong> en vez de correcciones puntuales.</td>
+                  </tr>
+                  <tr>
+                    <th><span class="chip">después</span></th>
+                    <td>Catálogos reales de fabricantes, exportación a IFC, y parcelas arbitrarias con las mismas reglas.</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <p class="quote">Lo que ya es cierto hoy: un agente autónomo con cursor propio, dentro de una malla compartida, moviendo geometría que tres personas ven cambiar al mismo tiempo.</p>
+          </div>
+        </div>
+        <template class="notes">
+          <p>No prometas de más. La línea <strong>«entrando»</strong> está escrita pero todavía no cableada a la UI: si el jurado pregunta, dilo así.</p>
+        </template>
+      </section>
+
+      <!-- ---------- 17 ---------- -->
+      <section class="slide" data-eyebrow="Cierre" data-title="140 m² no caben dos veces." data-time="7:00 – 7:15">
+        <div class="wrap" data-w="wide">
+          <div class="stack">
+            <h2 class="mega">140 m² no caben dos veces.</h2>
+            <p class="sub" style="max-width:52ch;">Por eso hay que decidir juntos. Y ahora la IA también está en la mesa.</p>
+            <hr class="rule" />
+            <p class="mono" style="color:var(--dim); font-size:var(--fs-micro); letter-spacing:0.1em;">BRUTAL-140 · The Realtime Hackathon by Portal · sala lab_140 — pásense, está abierta.</p>
+          </div>
+        </div>
+        <template class="notes">
+          <p>Termina en el 3D, no en una diapositiva de agradecimientos.</p>
+          <p>Deja la parcela girando en pantalla mientras empiezan las preguntas.</p>
+        </template>
+      </section>
+
+      <!-- ---------- 18 · anexo A ---------- -->
+      <section class="slide" data-eyebrow="Anexo A · no proyectar" data-title="Preguntas del jurado" data-time="Q&amp;A">
+        <div class="wrap" data-w="wide">
+          <div class="stack" data-gap="s">
+            <span class="eyebrow">Anexo A · para el turno de preguntas</span>
+            <h2 class="h2" data-w="wide">Respuestas cortas</h2>
+            <div class="tablewrap">
+              <table data-fixed>
+                <tbody>
+                  <tr><td><em>«¿Esto no es un wrapper de ChatGPT?»</em></td><td>El conflicto lo detecta código determinista con umbrales físicos. El LLM recibe el diagnóstico ya medido y solo decide la colocación. Sin LLM, el sistema funciona igual.</td></tr>
+                  <tr><td><em>«¿Qué pasa si la IA alucina coordenadas?»</em></td><td>Se recortan a la parcela, se validan contra ids que existen y se limitan a 2 correcciones. Una alucinación produce, como mucho, un movimiento válido pero mediocre.</td></tr>
+                  <tr><td><em>«¿Cómo resuelven los conflictos de edición?»</em></td><td>El log es el orden. Se reduce en orden de llegada y todos los clientes convergen. El bloqueo se aplica dentro del mismo pase, así que congela igual para todos.</td></tr>
+                  <tr><td><em>«¿Cuánta latencia tiene?»</em></td><td>El cursor va a ~8 Hz con puerta de 8 cm; la geometría viaja como mensaje persistente y se pinta optimista en local mientras se arrastra. Nadie espera a la red para ver su propio movimiento.</td></tr>
+                  <tr><td><em>«¿Escala a 20 personas?»</em></td><td>El canal de señales no guarda historial, así que el coste por peer es constante. El anfitrión determinista evita que la IA se dispare N veces. El límite práctico está en el render, no en el estado.</td></tr>
+                  <tr><td><em>«¿Por qué no un CRDT?»</em></td><td>Porque el dominio ya tiene un orden natural: quién puso qué antes. Un log reducido da convergencia con una fracción de la complejidad, y encima es auditable.</td></tr>
+                  <tr><td><em>«¿Dónde está la clave secreta?»</em></td><td>Solo en el servidor. El navegador usa la clave pública anónima; el agente publica por HTTP desde el backend.</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+        <template class="notes">
+          <p>Salta aquí con <span class="k">O</span> → última tarjeta, o pulsando <span class="k">→</span> desde el cierre. No la proyectes durante el pitch.</p>
+        </template>
+      </section>
+
+      <!-- ---------- 19 · anexo B ---------- -->
+      <section class="slide" data-eyebrow="Anexo B · no proyectar" data-title="Versión de 3 minutos" data-time="3:00">
+        <div class="wrap">
+          <div class="stack">
+            <span class="eyebrow">Anexo B · si te recortan el tiempo</span>
+            <h2 class="h2" data-w="wide">Versión de 3 minutos</h2>
+            <p class="body">Pulsa <strong><span class="k">C</span></strong> para activar el modo corte: la navegación salta las diapositivas <strong>11</strong> y <strong>13</strong> automáticamente.</p>
+            <div class="tablewrap">
+              <table data-fixed>
+                <thead><tr><th>Tiempo</th><th>Diapositivas</th></tr></thead>
+                <tbody>
+                  <tr><td><span class="k">0:00 – 0:30</span></td><td>01 + 02 — portada y problema</td></tr>
+                  <tr><td><span class="k">0:30 – 0:50</span></td><td>03 + 04 — la restricción y qué es</td></tr>
+                  <tr><td><span class="k">0:50 – 2:10</span></td><td><strong>05 — demo, versión corta (80 s)</strong>: presencia → conflicto → la IA entra sola → aplicar</td></tr>
+                  <tr><td><span class="k">2:10 – 2:40</span></td><td>07 + 08 — la IA es un participante, el log es el estado</td></tr>
+                  <tr><td><span class="k">2:40 – 2:55</span></td><td>10 — reglas físicas reales (solo la tabla)</td></tr>
+                  <tr><td><span class="k">2:55 – 3:00</span></td><td>17 — cierre</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <p class="quote">Si solo puedes decir una frase, di esta: «La IA no comenta el plano. Está dentro del plano, con cursor propio, y mueve los muros.»</p>
+          </div>
+        </div>
+        <template class="notes">
+          <p>La frase de cierre está en pantalla porque es la que hay que memorizar. Todo lo demás se puede improvisar.</p>
+        </template>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- ================= barra inferior ================= -->
+  <footer class="botbar">
+    <span class="time" id="time">0:00 – 0:15</span>
+    <span class="spacer"></span>
+    <div class="keys" aria-hidden="true">
+      <span><kbd>← →</kbd>navegar</span>
+      <span><kbd>N</kbd>notas</span>
+      <span><kbd>O</kbd>índice</span>
+      <span><kbd>C</kbd>corte 3 min</span>
+      <span><kbd>F</kbd>pantalla completa</span>
+    </div>
+    <span class="spacer"></span>
+    <span class="count" id="count">01 / 19</span>
+  </footer>
+</div>
+
+<!-- ================= notas del presentador ================= -->
+<aside class="notesbar" id="notesbar" aria-label="Notas del presentador">
+  <div class="nb-head">
+    <span class="eyebrow">Notas del presentador</span>
+    <span class="chip" id="nb-time">0:00 – 0:15</span>
+  </div>
+  <div class="nb-body" id="nb-body"></div>
+</aside>
+
+<!-- ================= índice ================= -->
+<div class="overview" id="overview" role="dialog" aria-label="Índice de diapositivas" aria-modal="true">
+  <div style="display:flex; align-items:center; gap:1em;">
+    <span class="eyebrow">Índice</span>
+    <span class="spacer"></span>
+    <span class="chip"><kbd style="border:0; padding:0; font-family:var(--mono);">Esc</kbd> cerrar</span>
+  </div>
+  <div class="ov-grid" id="ov-grid"></div>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  var slides   = Array.prototype.slice.call(document.querySelectorAll(".slide"));
+  var ticksEl  = document.getElementById("ticks");
+  var ovGrid   = document.getElementById("ov-grid");
+  var overview = document.getElementById("overview");
+  var notesbar = document.getElementById("notesbar");
+  var nbBody   = document.getElementById("nb-body");
+  var nbTime   = document.getElementById("nb-time");
+  var sectionEl = document.getElementById("section");
+  var timeEl   = document.getElementById("time");
+  var countEl  = document.getElementById("count");
+  var chipCut  = document.getElementById("chip-cut");
+  var chipFlag = document.getElementById("chip-flag");
+
+  var i = 0;
+  var cut = false;
+  var notesOpen = false;
+  var ovOpen = false;
+
+  function pad(n) { return n < 10 ? "0" + n : String(n); }
+  function isCut(s) { return s.dataset.cut === "1"; }
+
+  /* ---- raíl de escala: un tick por diapositiva, clicable ---- */
+  slides.forEach(function (s, n) {
+    var b = document.createElement("button");
+    b.className = "tick";
+    b.type = "button";
+    b.dataset.cut = s.dataset.cut || "0";
+    b.setAttribute("aria-label", "Ir a la diapositiva " + (n + 1) + ": " + s.dataset.title);
+    b.appendChild(document.createElement("i"));
+    b.addEventListener("click", function () { go(n); });
+    ticksEl.appendChild(b);
+
+    var c = document.createElement("button");
+    c.className = "ov-card";
+    c.type = "button";
+    c.dataset.cut = s.dataset.cut || "0";
+    var nEl = document.createElement("span");
+    nEl.className = "n";
+    nEl.textContent = pad(n + 1) + (isCut(s) ? "  · corte" : "");
+    var tEl = document.createElement("span");
+    tEl.className = "t";
+    tEl.textContent = s.dataset.title;
+    c.appendChild(nEl);
+    c.appendChild(tEl);
+    c.addEventListener("click", function () { closeOverview(); go(n); });
+    ovGrid.appendChild(c);
+  });
+
+  var tickEls = Array.prototype.slice.call(ticksEl.children);
+  var ovEls   = Array.prototype.slice.call(ovGrid.children);
+
+  function render() {
+    var s = slides[i];
+
+    slides.forEach(function (el, n) { el.classList.toggle("is-active", n === i); });
+    tickEls.forEach(function (el, n) { el.setAttribute("aria-current", n === i ? "true" : "false"); });
+    ovEls.forEach(function (el, n) { el.setAttribute("aria-current", n === i ? "true" : "false"); });
+
+    sectionEl.textContent = s.dataset.eyebrow || "";
+    timeEl.textContent = s.dataset.time || "";
+    countEl.textContent = pad(i + 1) + " / " + pad(slides.length);
+
+    chipFlag.hidden = !isCut(s);
+    chipFlag.setAttribute("data-tone", "cut");
+
+    var tpl = s.querySelector("template.notes");
+    nbBody.innerHTML = tpl ? tpl.innerHTML : "<p>Sin notas.</p>";
+    nbTime.textContent = s.dataset.time || "";
+
+    if (location.hash !== "#" + (i + 1)) {
+      history.replaceState(null, "", "#" + (i + 1));
+    }
+  }
+
+  function go(n) {
+    i = Math.max(0, Math.min(slides.length - 1, n));
+    render();
+  }
+
+  function step(dir) {
+    var n = i;
+    do { n += dir; } while (n > 0 && n < slides.length - 1 && cut && isCut(slides[n]));
+    if (n < 0 || n > slides.length - 1) { return; }
+    if (cut && isCut(slides[n])) { return; }
+    go(n);
+  }
+
+  function toggleNotes(force) {
+    notesOpen = typeof force === "boolean" ? force : !notesOpen;
+    notesbar.classList.toggle("is-open", notesOpen);
+  }
+
+  function openOverview() {
+    ovOpen = true;
+    overview.classList.add("is-open");
+    ovEls[i].focus();
+  }
+  function closeOverview() {
+    ovOpen = false;
+    overview.classList.remove("is-open");
+  }
+
+  function toggleCut() {
+    cut = !cut;
+    chipCut.hidden = !cut;
+    document.body.dataset.cut = cut ? "1" : "0";
+    if (cut && isCut(slides[i])) { step(1); }
+  }
+
+  function fullscreen() {
+    if (document.fullscreenElement) {
+      document.exitFullscreen();
+    } else if (document.documentElement.requestFullscreen) {
+      document.documentElement.requestFullscreen();
+    }
+  }
+
+  document.addEventListener("keydown", function (e) {
+    if (e.metaKey || e.ctrlKey || e.altKey) { return; }
+    var k = e.key;
+
+    if (k === "Escape") {
+      if (ovOpen) { closeOverview(); e.preventDefault(); }
+      else if (notesOpen) { toggleNotes(false); e.preventDefault(); }
+      return;
+    }
+
+    switch (k) {
+      case "ArrowRight": case "ArrowDown": case " ": case "PageDown":
+        step(1); e.preventDefault(); break;
+      case "ArrowLeft": case "ArrowUp": case "PageUp":
+        step(-1); e.preventDefault(); break;
+      case "Home": go(0); e.preventDefault(); break;
+      case "End": go(slides.length - 1); e.preventDefault(); break;
+      case "n": case "N": toggleNotes(); e.preventDefault(); break;
+      case "o": case "O":
+        if (ovOpen) { closeOverview(); } else { openOverview(); }
+        e.preventDefault(); break;
+      case "c": case "C": toggleCut(); e.preventDefault(); break;
+      case "f": case "F": fullscreen(); e.preventDefault(); break;
+      default: break;
+    }
+  });
+
+  /* Avance por clic en el escenario, como un mando de presentación. */
+  document.getElementById("slides").addEventListener("click", function (e) {
+    if (e.target.closest("a, button")) { return; }
+    step(1);
+  });
+
+  var start = parseInt((location.hash || "").slice(1), 10);
+  go(isNaN(start) ? 0 : start - 1);
+})();
+</script>
+
+</body>
+</html>
