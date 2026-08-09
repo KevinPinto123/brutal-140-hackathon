@@ -2,7 +2,7 @@
 
 import type { ReactNode } from "react";
 import { Html } from "@react-three/drei";
-import { COLORS, PARTICIPANTS, PLOT } from "@/lib/constants";
+import { PLOT } from "@/lib/constants";
 import { AI_SENDER, type LiveCamera, type LiveCursor } from "@/lib/portal/events";
 
 /**
@@ -28,17 +28,6 @@ type Cursor = {
 const EYE = 1.56;
 /** Semiapertura del cono de visión dibujado en el suelo. */
 const FOV_HALF = 0.44;
-
-/** Escena de referencia mientras no hay peers conectados (una sola pestaña). */
-const SEED: Cursor[] = PARTICIPANTS.map((p) => ({
-  id: p.id,
-  name: p.name,
-  color: COLORS[p.color],
-  position: p.cursor,
-  status: p.status,
-  yaw: Math.atan2(-p.cursor[0], -p.cursor[2]),
-  isAI: p.isAI,
-}));
 
 /**
  * De dónde sale la mirada: del encuadre real del peer si lo ha difundido, y si
@@ -212,17 +201,18 @@ export function PresenceLayer({
   const HX = PLOT.width / 2;
   const HZ = PLOT.depth / 2;
 
-  const shown: Cursor[] = cursors.length
-    ? cursors.map((c) => ({
-        id: c.id,
-        name: c.name,
-        color: c.color,
-        position: [c.x, c.y, c.z],
-        status: c.status,
-        yaw: yawOf(c, cameras[c.id]),
-        isAI: c.id === AI_SENDER,
-      }))
-    : SEED;
+  // Un cuerpo por señal viva y ninguno más. Si estás solo en la parcela, la
+  // parcela se ve vacía: poblarla de figuras de ejemplo haría que el lienzo
+  // —lo único que se mira durante la demo— mintiera sobre quién está dentro.
+  const shown: Cursor[] = cursors.map((c) => ({
+    id: c.id,
+    name: c.name,
+    color: c.color,
+    position: [c.x, c.y, c.z],
+    status: c.status,
+    yaw: yawOf(c, cameras[c.id]),
+    isAI: c.id === AI_SENDER,
+  }));
 
   return (
     <group>

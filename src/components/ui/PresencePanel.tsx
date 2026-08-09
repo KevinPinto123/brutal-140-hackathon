@@ -2,33 +2,19 @@
 
 import { Circle, Minus } from "@/components/icons";
 import { useRoom } from "@/components/providers/RoomProvider";
-import { COLORS, PARTICIPANTS } from "@/lib/constants";
+import { AI_SENDER } from "@/lib/portal/events";
 import { Panel, SectionTitle } from "./primitives";
 
 type Body = { top: string; bottom: string; skin: string };
 
-const BODY: Record<string, Body> = {
-  diego: { top: "#5b6473", bottom: "#3d434e", skin: "#c9a68a" },
-  claudia: { top: "#d7d3de", bottom: "#8b74c4", skin: "#dbb79b" },
-  mateo: { top: "#3f8a4f", bottom: "#2b2f36", skin: "#c9a68a" },
-  ai_architect: { top: "#a78bfa", bottom: "#7c3aed", skin: "#c4b5fd" },
-};
-
 type Row = { id: string; color: string; body: Body; isAI?: boolean };
 
-/** Un peer anonimo viste su propio color de presencia. */
+/** Cada peer viste su propio color de presencia: el que eligió al entrar. */
 const bodyFor = (color: string): Body => ({
   top: color,
   bottom: "#2b2f36",
   skin: "#c9a68a",
 });
-
-const SEED: Row[] = PARTICIPANTS.map((p) => ({
-  id: p.id,
-  color: COLORS[p.color],
-  body: BODY[p.id] ?? BODY.diego,
-  isAI: p.isAI,
-}));
 
 function Figure({ id, color, body, isAI }: { id: string; color: string; body: Body; isAI?: boolean }) {
   const gid = `pg-${id}`;
@@ -80,14 +66,20 @@ function Figure({ id, color, body, isAI }: { id: string; color: string; body: Bo
   );
 }
 
+/**
+ * Los cuerpos que hay en la sala, en pequeño. Uno por peer conectado y ninguno
+ * más: si la rejilla se queda vacía es que estás solo, y eso también es
+ * información.
+ */
 export function PresencePanel() {
-  const { participants } = useRoom();
+  const { participants, status } = useRoom();
 
-  const rows: Row[] = participants.length
-    ? participants
-        .slice(0, 4)
-        .map((p) => ({ id: p.id, color: p.color, body: bodyFor(p.color) }))
-    : SEED;
+  const rows: Row[] = participants.slice(0, 4).map((p) => ({
+    id: p.id,
+    color: p.color,
+    body: bodyFor(p.color),
+    isAI: p.id === AI_SENDER,
+  }));
 
   return (
     <Panel className="flex min-h-0 flex-col overflow-hidden px-4 pb-3 pt-3.5">
@@ -102,13 +94,19 @@ export function PresencePanel() {
       >
         Presencia en 3D
       </SectionTitle>
-      <div className="grid min-h-0 flex-1 grid-cols-4 gap-1">
-        {rows.map((p) => (
-          <div key={p.id} className="flex min-h-0 items-end justify-center">
-            <Figure id={p.id} color={p.color} body={p.body} isAI={p.isAI} />
-          </div>
-        ))}
-      </div>
+      {rows.length === 0 ? (
+        <p className="flex min-h-0 flex-1 items-center text-[11.5px] leading-[1.5] text-dim">
+          {status === "ready" ? "Nadie en la parcela todavía." : "Conectando con la sala…"}
+        </p>
+      ) : (
+        <div className="grid min-h-0 flex-1 grid-cols-4 gap-1">
+          {rows.map((p) => (
+            <div key={p.id} className="flex min-h-0 items-end justify-center">
+              <Figure id={p.id} color={p.color} body={p.body} isAI={p.isAI} />
+            </div>
+          ))}
+        </div>
+      )}
     </Panel>
   );
 }

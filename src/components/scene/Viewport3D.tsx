@@ -2,13 +2,22 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Canvas, useThree, type ThreeEvent } from "@react-three/fiber";
-import { Environment, Lightformer, OrbitControls, PerspectiveCamera } from "@react-three/drei";
+import type { Object3D } from "three";
+import {
+  Environment,
+  Lightformer,
+  OrbitControls,
+  OrthographicCamera,
+  PerspectiveCamera,
+} from "@react-three/drei";
+import type { Projection } from "@/components/providers/EditorProvider";
 import { clampToPlot, type Entity } from "@/lib/entities";
 import type { LiveCamera, LiveCursor } from "@/lib/portal/events";
 import type { SunState } from "@/lib/sun";
 import {
   FLIGHT_MS,
   HOME,
+  ORTHO_FIT,
   easeInOut,
   lerpVec3,
   type Vec3,
@@ -31,6 +40,14 @@ export type ViewportProps = {
   held?: Record<string, HeldBy>;
   /** Encuadre al que volar. Cambiar la identidad del objeto dispara el vuelo. */
   view?: ViewRequest | null;
+  /** Perspectiva para habitar el espacio, ortográfica para acotarlo. */
+  projection?: Projection;
+  /** Rejilla técnica de 0.5 m sobre la losa. */
+  grid?: boolean;
+  /** Capa de anotación: discos térmicos, aristas y etiquetas de los volúmenes. */
+  overlays?: boolean;
+  /** Contador de capturas; al subir, el lienzo se baja como PNG. */
+  shot?: number;
   /** La herramienta activa deposita geometría al hacer clic en la losa. */
   canPlace?: boolean;
   /** Diseño cerrado: se puede mirar y orbitar, no tocar. */
@@ -47,11 +64,13 @@ export type ViewportProps = {
 const CLICK_SLOP = 4;
 
 /**
- * Último objetivo real de los controles. Vive fuera de React porque cambia a
- * 60 Hz mientras alguien orbita y no debe provocar ni un solo render: solo se
- * lee al arrancar un vuelo, para salir desde donde está la cámara de verdad.
+ * Encuadre real de los controles, ojo y objetivo. Vive fuera de React porque
+ * cambia a 60 Hz mientras alguien orbita y no debe provocar ni un solo render:
+ * solo se lee en dos momentos, al arrancar un vuelo y al cambiar de proyección,
+ * y en los dos hace falta saber dónde está la cámara de verdad, no dónde la
+ * dejó el último encuadre declarado.
  */
-const live = { target: HOME.target as Vec3 };
+const live = { eye: HOME.eye as Vec3, target: HOME.target as Vec3 };
 
 /**
  * Cámara declarativa. Durante un vuelo el encuadre es estado de React y R3F lo
@@ -60,23 +79,25 @@ const live = { target: HOME.target as Vec3 };
  */
 function CameraRig({
   view,
+  projection = "perspective",
   frozen,
   onCamera,
 }: {
   view?: ViewRequest | null;
+  projection?: Projection;
   /** Los controles se apagan mientras se arrastra un volumen. */
   frozen?: boolean;
   onCamera?: (eye: Vec3, target: Vec3) => void;
 }) {
   const camera = useThree((s) => s.camera);
+  const height = useThree((s) => s.size.height);
   const [frame, setFrame] = useState<View>(HOME);
 
+  // El vuelo sale de `live`, no de `camera`: así cambiar de proyección —que
+  // sustituye el objeto cámara— no cuenta como una petición de vuelo nueva.
   useEffect(() => {
     if (!view) return;
-    const from: View = {
-      eye: [camera.position.x, camera.position.y, camera.position.z],
-      target: live.target,
-    };
+    const from: View = { eye: live.eye, target: live.target };
     const start = performance.now();
     let raf = 0;
     const step = (now: number) => {
@@ -89,7 +110,21 @@ function CameraRig({
     };
     raf = requestAnimationFrame(step);
     return () => cancelAnimationFrame(raf);
-  }, [view, camera]);
+  }, [view]);
+
+  /**
+   * Cambiar de proyección monta otra cámara, y la nueva nacería en `frame`, que
+   * es donde acabó el último vuelo: todo lo orbitado a mano desde entonces se
+   * perdería de golpe. Esto la coloca donde estaba la anterior de verdad.
+   *
+   * Va en un ref y no en un efecto por dos razones: React llama al ref en el
+   * commit, antes de pintar, así que no hay ni un cuadro en el sitio
+   * equivocado; y con identidad estable solo se llama al montar y al
+   * desmontar, de modo que no le pisa la posición al vuelo, que sí es estado.
+   */
+  const placeCamera = useCallback((cam: Object3D | null) => {
+    if (cam) cam.position.set(live.eye[0], live.eye[1], live.eye[2]);
+  }, []);
 
   // `change` dispara en cada cuadro con amortiguación; el techo de publicación
   // lo pone el provider, aquí solo se lee el estado de los controles.
@@ -97,14 +132,43 @@ function CameraRig({
     (e?: { target?: { target?: { x: number; y: number; z: number } } }) => {
       const t = e?.target?.target;
       if (t) live.target = [t.x, t.y, t.z];
-      onCamera?.([camera.position.x, camera.position.y, camera.position.z], live.target);
+      live.eye = [camera.position.x, camera.position.y, camera.position.z];
+      onCamera?.(live.eye, live.target);
     },
     [camera, onCamera],
   );
 
   return (
     <>
-      <PerspectiveCamera makeDefault position={frame.eye} fov={36} near={0.1} far={300} />
+      {projection === "ortho" ? (
+        /*
+          Sin campo de visión no hay fuga: las paredes paralelas salen paralelas
+          y una medida vale igual en cualquier punto del lienzo. Es la vista con
+          la que se acota un plano.
+
+          `near` negativo a propósito: el plano de recorte cercano de una cámara
+          ortográfica es una rebanada perpendicular a la mirada, y con los ojos
+          de las vistas rápidas —la fachada mira desde 12 m— cortaría el modelo
+          por la mitad. Dejarlo detrás de la cámara evita el corte.
+        */
+        <OrthographicCamera
+          ref={placeCamera}
+          makeDefault
+          position={frame.eye}
+          zoom={height / ORTHO_FIT}
+          near={-200}
+          far={400}
+        />
+      ) : (
+        <PerspectiveCamera
+          ref={placeCamera}
+          makeDefault
+          position={frame.eye}
+          fov={36}
+          near={0.1}
+          far={300}
+        />
+      )}
       <OrbitControls
         makeDefault
         enabled={!frozen}
@@ -112,12 +176,43 @@ function CameraRig({
         onChange={handleChange}
         enableDamping
         dampingFactor={0.07}
+        // El acercamiento en perspectiva se mide en metros y en ortográfica en
+        // zoom; OrbitControls ignora el par que no toca según la cámara activa.
         minDistance={5}
         maxDistance={60}
+        minZoom={10}
+        maxZoom={260}
         maxPolarAngle={Math.PI / 2.12}
       />
     </>
   );
+}
+
+/**
+ * Captura del lienzo. Se dibuja un cuadro a mano y se lee el búfer en el mismo
+ * turno: WebGL descarta el contenido del lienzo en cuanto lo compone, así que
+ * leerlo un tick más tarde daría un PNG en negro. La alternativa —arrancar el
+ * contexto con `preserveDrawingBuffer`— cuesta memoria en cada cuadro de la
+ * sesión a cambio de una foto que casi nadie pide.
+ *
+ * Lo que sale es exactamente el WebGL: las etiquetas de drei son DOM flotando
+ * encima del lienzo y no entran, igual que no entra la HUD.
+ */
+function Capture({ shot }: { shot?: number }) {
+  const gl = useThree((s) => s.gl);
+  const scene = useThree((s) => s.scene);
+  const camera = useThree((s) => s.camera);
+
+  useEffect(() => {
+    if (!shot) return;
+    gl.render(scene, camera);
+    const link = document.createElement("a");
+    link.href = gl.domElement.toDataURL("image/png");
+    link.download = `brutal-140-${String(shot).padStart(2, "0")}.png`;
+    link.click();
+  }, [shot, gl, scene, camera]);
+
+  return null;
 }
 
 function SceneGraph({
@@ -127,6 +222,10 @@ function SceneGraph({
   selected = null,
   held,
   view,
+  projection,
+  grid = true,
+  overlays = true,
+  shot,
   canPlace,
   locked,
   onPoint,
@@ -198,11 +297,24 @@ function SceneGraph({
 
   return (
     <>
-      <Plot onPoint={point} onFloorDown={floorDown} onFloorUp={floorUp} />
-      <Modules entities={shown} selected={selected} dragId={dragId} held={held} onGrab={grab} />
+      <Plot grid={grid} onPoint={point} onFloorDown={floorDown} onFloorUp={floorUp} />
+      <Modules
+        entities={shown}
+        selected={selected}
+        dragId={dragId}
+        held={held}
+        overlays={overlays}
+        onGrab={grab}
+      />
       <PresenceLayer cursors={cursors} cameras={cameras} />
 
-      <CameraRig view={view} frozen={!!dragId} onCamera={onCamera} />
+      <CameraRig
+        view={view}
+        projection={projection}
+        frozen={!!dragId}
+        onCamera={onCamera}
+      />
+      <Capture shot={shot} />
     </>
   );
 }

@@ -3,14 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import { Send, Sparkles } from "@/components/icons";
 import { useRoom } from "@/components/providers/RoomProvider";
-import { CHAT_SEED } from "@/lib/constants";
+import { AI_SENDER } from "@/lib/portal/events";
 import { Panel, SectionTitle, cx } from "./primitives";
-
-const AVATAR_BG: Record<string, string> = {
-  mateo: "linear-gradient(150deg,#4a4a52,#26262b)",
-  claudia: "linear-gradient(150deg,#6b4a2a,#33241a)",
-  diego: "linear-gradient(150deg,#3f4b63,#232a36)",
-};
 
 type Row = {
   id: string;
@@ -19,20 +13,9 @@ type Row = {
   body: string;
   isAI?: boolean;
   color?: string;
-  seedId?: string;
   pending?: boolean;
   failed?: boolean;
 };
-
-/** Conversacion de referencia mientras el canal aun no tiene historial. */
-const SEED_ROWS: Row[] = CHAT_SEED.map((m) => ({
-  id: m.id,
-  author: m.author,
-  time: m.time,
-  body: m.body,
-  isAI: m.isAI,
-  seedId: m.authorId,
-}));
 
 const clock = (ms: number) =>
   new Date(ms).toLocaleTimeString("es", { hour: "2-digit", minute: "2-digit" });
@@ -51,29 +34,31 @@ function MessageAvatar({ row }: { row: Row }) {
       style={{
         background: row.color
           ? `linear-gradient(150deg, ${row.color}, ${row.color}55)`
-          : (AVATAR_BG[row.seedId ?? ""] ?? "linear-gradient(150deg,#44444c,#25252a)"),
+          : "linear-gradient(150deg,#44444c,#25252a)",
       }}
     />
   );
 }
 
+/**
+ * El chat del proyecto. Lo que se lee aquí lo escribió alguien: no hay
+ * conversación de arranque que simule un equipo que ya llevaba rato hablando.
+ */
 export function ChatPanel() {
   const { chat, sendChat, status } = useRoom();
   const [draft, setDraft] = useState("");
   const feed = useRef<HTMLDivElement>(null);
 
-  const rows: Row[] = chat.length
-    ? chat.map((m) => ({
-        id: m.id,
-        author: m.content.name,
-        time: clock(m.timestamp),
-        body: m.content.text,
-        color: m.content.color,
-        isAI: m.sender.id === "ai_architect",
-        pending: m.status === "pending",
-        failed: m.status === "failed",
-      }))
-    : SEED_ROWS;
+  const rows: Row[] = chat.map((m) => ({
+    id: m.id,
+    author: m.content.name,
+    time: clock(m.timestamp),
+    body: m.content.text,
+    color: m.content.color,
+    isAI: m.sender.id === AI_SENDER,
+    pending: m.status === "pending",
+    failed: m.status === "failed",
+  }));
 
   useEffect(() => {
     const el = feed.current;
@@ -95,6 +80,13 @@ export function ChatPanel() {
         ref={feed}
         className="scroll-thin -mr-2 min-h-0 flex-1 space-y-2.5 overflow-y-auto pr-2"
       >
+        {rows.length === 0 && (
+          <p className="text-[11.5px] leading-[1.5] text-dim">
+            {status === "ready"
+              ? "Todavía no hay mensajes. Escribe el primero."
+              : "Conectando con la sala…"}
+          </p>
+        )}
         {rows.map((m) => (
           <div key={m.id} className={cx("flex gap-2.5", m.pending && "opacity-55")}>
             <MessageAvatar row={m} />

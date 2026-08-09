@@ -30,6 +30,8 @@ export const EVT = {
   drag: "entity.drag",
   camera: "camera",
   sunDrag: "sun",
+  hello: "peer.hello",
+  bye: "peer.bye",
 } as const;
 
 export type ChatEvent = {
@@ -61,6 +63,24 @@ export type CameraEvent = {
   name: string;
   color: string;
 };
+
+/**
+ * Latido de presencia.
+ *
+ * La sala se abre con clave anónima, así que cada recarga acuña una sesión
+ * nueva y la anterior sigue colgada del roster del servidor hasta que caduca:
+ * el resultado es que alguien que se fue —o que recargó tres veces— aparece
+ * varias veces «en línea». Eso son usuarios falsos con otro disfraz.
+ *
+ * La cura es no fiarse solo de la lista y pedir prueba de vida: cada cliente
+ * late por el canal efímero, y el latido lleva su `sid` (el id de su sesión en
+ * el canal de estado) para poder cruzarlo con esa lista. Quien no late no se
+ * pinta, aunque el servidor todavía lo tenga apuntado.
+ */
+export type HelloEvent = { name: string; color: string; sid?: string };
+
+/** Despedida explícita: retira al emisor sin esperar a que caduque su latido. */
+export type ByeEvent = { sid?: string };
 
 /** Alta o modificación de un volumen. El payload es la entidad completa. */
 export type EntityEvent = Entity;
@@ -102,6 +122,8 @@ export type RoomEvent =
   | ChatEvent
   | CursorEvent
   | CameraEvent
+  | HelloEvent
+  | ByeEvent
   | EntityEvent
   | EntityRemoveEvent
   | DragEvent
@@ -117,9 +139,15 @@ export type LiveCursor = CursorEvent & { id: string; at: number };
 /** Encuadre remoto ya materializado en el cliente. */
 export type LiveCamera = CameraEvent & { id: string; at: number };
 
-/** Participante de la sala, unificando presencia + último cursor visto. */
+/** Latido remoto ya materializado: `id` es el emisor en el canal de señales. */
+export type LivePeer = HelloEvent & { id: string; at: number };
+
+/** Participante de la sala, unificando latido + presencia + último cursor visto. */
 export type RoomParticipant = {
+  /** Sesión en el canal de estado. Es la que ordena la elección de anfitrión. */
   id: string;
+  /** Sesión en el canal de señales: la clave de `cursors` y `cameras`. */
+  signalId?: string;
   name: string;
   color: string;
   status: string;

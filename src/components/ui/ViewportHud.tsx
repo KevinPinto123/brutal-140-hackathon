@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import {
   Camera,
   Cursor,
@@ -8,46 +7,141 @@ import {
   GridIcon,
   History,
   Lock,
-  Move,
   Rotate,
   Target,
   Unlock,
 } from "@/components/icons";
+import { useEditor, type Projection } from "@/components/providers/EditorProvider";
 import { useRoom } from "@/components/providers/RoomProvider";
+import { QUICK_VIEWS } from "@/lib/constants";
+import { viewOnPoint } from "@/lib/views";
 import { Dropdown } from "./Dropdown";
 import { SolarControl } from "./SolarControl";
 import { Timeline } from "./Timeline";
 import { cx } from "./primitives";
 
-const VIEW_MODES = [
-  "Planta isométrica",
-  "Planta 2D",
-  "Sección longitudinal",
-  "Fachada frontal",
-];
+/**
+ * El selector de arriba y el panel «Vistas rápidas» de la derecha son el mismo
+ * mando visto dos veces: una sola lista de encuadres, para que no puedan
+ * contradecirse.
+ */
+const VIEW_LABELS = QUICK_VIEWS.map((v) => v.label);
 
-const PROJECTIONS = ["Perspectiva", "Ortográfica"];
+/** Lo que dice el selector cuando la cámara se fue por su cuenta. */
+const FREE_VIEW = "Vista libre";
 
-const GIZMOS = [
-  { id: "select", Icon: Cursor, label: "Seleccionar" },
-  { id: "orbit", Icon: Target, label: "Orbitar" },
-  { id: "rotate", Icon: Rotate, label: "Rotar" },
-  { id: "move", Icon: Move, label: "Mover" },
-  { id: "grid", Icon: GridIcon, label: "Rejilla" },
-  { id: "visibility", Icon: Eye, label: "Visibilidad" },
-  { id: "capture", Icon: Camera, label: "Captura" },
-] as const;
+const PROJECTIONS: Record<Projection, string> = {
+  perspective: "Perspectiva",
+  ortho: "Ortográfica",
+};
+
+/**
+ * Un mando de la barra central. `on` lo enciende (es un interruptor y está
+ * puesto), `off` lo apaga (no hay nada sobre lo que actuar); los que solo
+ * disparan una acción no llevan ninguno de los dos.
+ */
+type Gizmo = {
+  id: string;
+  Icon: typeof Cursor;
+  label: string;
+  hint?: string;
+  on?: boolean;
+  off?: boolean;
+  run: () => void;
+};
 
 /**
  * HUD sobre el lienzo: el marco es transparente (el WebGL se ve a traves) y
  * solo los controles capturan el puntero, dejando el orbit libre.
+ *
+ * Regla de la casa: aquí no vive ningún mando decorativo. Si un botón se pinta,
+ * hace lo que dice su etiqueta; el que no tenga nada que hacer se borra.
  */
 export function ViewportHud() {
-  const { locked, lockedBy, setLocked, entities, replaying, showMoment } = useRoom();
-  const [mode, setMode] = useState(VIEW_MODES[0]);
-  const [projection, setProjection] = useState(PROJECTIONS[0]);
-  const [gizmo, setGizmo] = useState<string>("select");
-  const [flat, setFlat] = useState(false);
+  const { locked, lockedBy, setLocked, entities, replaying, showMoment, upsertEntity } = useRoom();
+  const {
+    tool,
+    setTool,
+    selected,
+    quickView,
+    showQuickView,
+    flyTo,
+    projection,
+    setProjection,
+    grid,
+    setGrid,
+    overlays,
+    setOverlays,
+    capture,
+  } = useEditor();
+
+  const entity = entities.find((e) => e.id === selected) ?? null;
+
+  /** «Vista 2D» de verdad: cenital y sin fuga, que es como se lee una planta. */
+  const flat = projection === "ortho" && quickView === "plan";
+
+  function toggleFlat() {
+    setProjection(flat ? "perspective" : "ortho");
+    showQuickView(flat ? "iso" : "plan");
+  }
+
+  const gizmos: Gizmo[] = [
+    {
+      id: "select",
+      Icon: Cursor,
+      label: "Seleccionar",
+      hint: "Soltar la herramienta activa y volver a seleccionar",
+      on: tool === "mover",
+      run: () => setTool("mover"),
+    },
+    {
+      id: "focus",
+      Icon: Target,
+      label: "Centrar en la selección",
+      hint: entity ? `Volar hasta ${entity.label}` : "Selecciona un volumen primero",
+      off: !entity,
+      run: () => {
+        if (entity) flyTo(viewOnPoint(entity.x, entity.z), `focus-${entity.id}`);
+      },
+    },
+    {
+      id: "rotate",
+      Icon: Rotate,
+      label: "Girar 90°",
+      hint: locked
+        ? "Diseño bloqueado"
+        : entity
+          ? `Girar ${entity.label} 90° (tecla R)`
+          : "Selecciona un volumen primero",
+      off: !entity || locked,
+      run: () => {
+        if (entity) upsertEntity({ ...entity, rotation: (entity.rotation + 90) % 360 });
+      },
+    },
+    {
+      id: "grid",
+      Icon: GridIcon,
+      label: "Rejilla",
+      hint: "Cuadrícula de 0.5 m sobre la losa",
+      on: grid,
+      run: () => setGrid(!grid),
+    },
+    {
+      id: "overlays",
+      Icon: Eye,
+      label: "Anotaciones",
+      hint: "Discos térmicos, aristas y cotas",
+      on: overlays,
+      run: () => setOverlays(!overlays),
+    },
+    {
+      id: "capture",
+      Icon: Camera,
+      label: "Captura",
+      hint: "Descargar el lienzo en PNG",
+      run: capture,
+    },
+  ];
 
   return (
     <div
@@ -56,26 +150,37 @@ export function ViewportHud() {
         locked ? "border-accent/60" : "border-line",
       )}
     >
-      {/* Modo de vista */}
-      <div className="pointer-events-auto absolute left-4 top-4 w-[152px]">
-        <Dropdown options={VIEW_MODES} value={mode} onChange={setMode} />
+      {/* Encuadre de la cámara */}
+      <div className="pointer-events-auto absolute left-4 top-4 w-[172px]">
+        <Dropdown
+          options={VIEW_LABELS}
+          value={QUICK_VIEWS.find((v) => v.id === quickView)?.label ?? FREE_VIEW}
+          onChange={(label) => {
+            const view = QUICK_VIEWS.find((v) => v.label === label);
+            if (view) showQuickView(view.id);
+          }}
+        />
       </div>
 
       {/* Gizmos */}
       <div className="pointer-events-auto absolute left-1/2 top-4 -translate-x-1/2">
         <div className="hud flex items-center gap-1 p-1.5">
-          {GIZMOS.map(({ id, Icon, label }) => (
+          {gizmos.map(({ id, Icon, label, hint, on, off, run }) => (
             <button
               key={id}
               type="button"
               aria-label={label}
-              title={label}
-              onClick={() => setGizmo(id)}
+              aria-pressed={on}
+              title={hint ?? label}
+              onClick={run}
+              disabled={off}
               className={cx(
                 "flex size-[30px] items-center justify-center rounded-[3px] transition-colors",
-                gizmo === id
-                  ? "bg-accent text-white"
-                  : "text-muted hover:bg-raised hover:text-fg",
+                off
+                  ? "cursor-not-allowed text-dim/40"
+                  : on
+                    ? "bg-accent text-white"
+                    : "text-muted hover:bg-raised hover:text-fg",
               )}
             >
               <Icon size={15} />
@@ -87,9 +192,9 @@ export function ViewportHud() {
       {/* Proyección + condición solar */}
       <div className="pointer-events-auto absolute right-4 top-4 flex items-start gap-3">
         <Dropdown
-          options={PROJECTIONS}
-          value={projection}
-          onChange={setProjection}
+          options={[PROJECTIONS.perspective, PROJECTIONS.ortho]}
+          value={PROJECTIONS[projection]}
+          onChange={(v) => setProjection(v === PROJECTIONS.ortho ? "ortho" : "perspective")}
           align="right"
           className="w-[124px]"
         />
@@ -100,7 +205,12 @@ export function ViewportHud() {
       <div className="pointer-events-auto absolute bottom-4 left-4">
         <button
           type="button"
-          onClick={() => setFlat((f) => !f)}
+          onClick={toggleFlat}
+          title={
+            flat
+              ? "Volver a la isométrica en perspectiva"
+              : "Planta cenital sin fuga: lo que se acota"
+          }
           className={cx(
             "hud px-3.5 py-2 text-[12px] leading-none transition-colors",
             flat ? "text-accent-2" : "text-fg/90 hover:text-white",

@@ -38,6 +38,17 @@ export const VIEW_PRESETS: Record<QuickViewId, View> = {
   facade: { eye: [0, 4, HALF_Z + 2], target: [0, 1.5, 0] },
 };
 
+/**
+ * Altura del campo ortográfico, en metros.
+ *
+ * Una cámara ortográfica no tiene campo de visión: lo que fija la escala es el
+ * `zoom`, y el `zoom` de three se mide en píxeles por unidad de mundo. Repartir
+ * la altura del lienzo entre estos metros da un encuadre que no depende de la
+ * resolución de la pantalla. 26 m dejan entrar los 20 m del eje largo con
+ * margen para el zócalo y las etiquetas.
+ */
+export const ORTHO_FIT = 26;
+
 /** Encuadre que mira de cerca a un punto de la parcela, desde el aire. */
 export function viewOnPoint(x: number, z: number): View {
   return { eye: [x + 6.5, 6, z + 8], target: [x, 0.8, z] };

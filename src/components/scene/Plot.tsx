@@ -25,13 +25,15 @@ const CURB_T = 0.14;
  * grid tecnico (celda 0.5m / seccion 1m) y zocalo perimetral de concreto.
  */
 type FloorHandlers = {
+  /** La rejilla se apaga para mirar el proyecto sin cuadrícula debajo. */
+  grid?: boolean;
   /** Raycast sobre la losa: coordenadas de mundo del cursor del usuario. */
   onPoint?: (x: number, y: number, z: number) => void;
   onFloorDown?: (e: ThreeEvent<PointerEvent>) => void;
   onFloorUp?: (e: ThreeEvent<PointerEvent>, x: number, z: number) => void;
 };
 
-export function Plot({ onPoint, onFloorDown, onFloorUp }: FloorHandlers) {
+export function Plot({ grid = true, onPoint, onFloorDown, onFloorUp }: FloorHandlers) {
   function handleMove(e: ThreeEvent<PointerEvent>) {
     if (!onPoint) return;
     e.stopPropagation();
@@ -53,22 +55,25 @@ export function Plot({ onPoint, onFloorDown, onFloorUp }: FloorHandlers) {
       </mesh>
 
       {/* Grid tecnico acotado al plano (no infinito) */}
-      <Grid
-        position={[0, 0.004, 0]}
-        args={[W, D]}
-        cellSize={0.5}
-        cellThickness={0.5}
-        cellColor="#2c2c33"
-        sectionSize={1}
-        sectionThickness={0.9}
-        sectionColor="#3d3d47"
-        fadeDistance={70}
-        fadeStrength={1.2}
-        infiniteGrid={false}
-        side={2}
-      />
+      {grid && (
+        <Grid
+          position={[0, 0.004, 0]}
+          args={[W, D]}
+          cellSize={0.5}
+          cellThickness={0.5}
+          cellColor="#2c2c33"
+          sectionSize={1}
+          sectionThickness={0.9}
+          sectionColor="#3d3d47"
+          fadeDistance={70}
+          fadeStrength={1.2}
+          infiniteGrid={false}
+          side={2}
+        />
+      )}
 
-      {/* Contorno de la parcela */}
+      {/* Contorno de la parcela. Se queda aunque se apague la rejilla: no es una
+          ayuda de dibujo, es el límite legal de los 7 x 20 m. */}
       <Line points={OUTLINE} color="#5c5c68" lineWidth={1.2} />
 
       {/* Zocalo perimetral (concreto expuesto) */}

@@ -1,6 +1,6 @@
 "use client";
 
-import { ANALYSIS, AI_SUGGESTION, MATERIALS } from "@/lib/constants";
+import { ANALYSIS, MATERIALS } from "@/lib/constants";
 import { ANALYSIS_ICONS, Sparkles } from "@/components/icons";
 import { useEditor } from "@/components/providers/EditorProvider";
 import { useRoom } from "@/components/providers/RoomProvider";
@@ -49,10 +49,17 @@ export function RightSidebar() {
   // quien disparó la evaluación.
   const lastAI = [...chat].reverse().find((m) => m.sender.id === AI_SENDER);
 
-  const message = lastAI?.content.text ?? verdict?.message ?? AI_SUGGESTION.message;
-  const time = lastAI ? clock(lastAI.timestamp) : AI_SUGGESTION.messageTime;
-  const headline = verdict?.headline ?? AI_SUGGESTION.suggestion;
+  // Lo que se lee aquí lo ha dicho el agente. Mientras no haya dicho nada no se
+  // pone una frase de ejemplo en su boca: se explica qué falta para que hable.
+  // La autoevaluación necesita geometría (`useArchitect` apaga la firma con la
+  // parcela vacía), así que eso es exactamente lo que se pide.
+  const message = lastAI?.content.text ?? verdict?.message ?? null;
+  const time = lastAI ? clock(lastAI.timestamp) : null;
+  const headline = verdict?.headline ?? null;
   const fixes = verdict?.corrections.length ?? 0;
+  const waiting = entities.length === 0
+    ? "Coloca algo en la parcela y El Arquitecto la evaluará."
+    : "Analizando la parcela…";
 
   const metrics = verdict
     ? ANALYSIS.map((a) => {
@@ -84,13 +91,22 @@ export function RightSidebar() {
         </div>
 
         <div className="scroll-thin min-h-0 flex-1 space-y-3 overflow-y-auto p-3.5">
-          {/* Mensaje del agente */}
+          {/* Mensaje del agente. La firma del motor solo se enseña cuando hay
+              algo firmado: sin veredicto no se atribuye nada a nadie. */}
           <div className="rounded-[4px] border border-line bg-panel-2 px-3.5 py-3">
-            <p className="text-[12.5px] leading-[1.5] text-fg/85">{message}</p>
-            <div className="mt-2 flex items-center justify-between font-mono text-[10px] text-dim">
-              <span>{verdict?.engine === "openai" ? "gpt · openai" : "heurística local"}</span>
-              <span>{time}</span>
-            </div>
+            {message ? (
+              <>
+                <p className="text-[12.5px] leading-[1.5] text-fg/85">{message}</p>
+                <div className="mt-2 flex items-center justify-between font-mono text-[10px] text-dim">
+                  <span>
+                    {verdict?.engine === "openai" ? "gpt · openai" : "heurística local"}
+                  </span>
+                  <span>{time}</span>
+                </div>
+              </>
+            ) : (
+              <p className="text-[12.5px] leading-[1.5] text-dim">{waiting}</p>
+            )}
           </div>
 
           {/* Sugerencia accionable */}
@@ -99,7 +115,13 @@ export function RightSidebar() {
             <div className="overflow-hidden rounded-[3px] border border-line">
               <HeatmapThumb entities={entities} corrections={verdict?.corrections ?? []} />
             </div>
-            <p className="mt-3 text-[12px] leading-[1.5] text-fg/85">{headline}</p>
+            {headline ? (
+              <p className="mt-3 text-[12px] leading-[1.5] text-fg/85">{headline}</p>
+            ) : (
+              <p className="mt-3 text-[12px] leading-[1.5] text-dim">
+                Todavía no hay ninguna corrección que proponer.
+              </p>
+            )}
 
             {error && (
               <p className="mt-2 font-mono text-[10px] text-warn">Reintenta: {error}</p>

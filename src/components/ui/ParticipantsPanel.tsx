@@ -3,15 +3,12 @@
 import { Eye, Sparkles } from "@/components/icons";
 import { useEditor } from "@/components/providers/EditorProvider";
 import { useRoom } from "@/components/providers/RoomProvider";
-import { COLORS, PARTICIPANTS } from "@/lib/constants";
 import { AI_SENDER } from "@/lib/portal/events";
 import { viewOnPoint, type View } from "@/lib/views";
 import { Dot, Panel, SectionTitle, cx } from "./primitives";
 
 const STATUS_TONE: Record<string, string> = {
-  muted: "text-muted",
   green: "text-ok",
-  blue: "text-info",
   violet: "text-accent-2",
 };
 
@@ -26,52 +23,52 @@ type Row = {
   view?: View;
 };
 
-/** Roster de referencia mientras el canal no esta listo. */
-const SEED: Row[] = PARTICIPANTS.map((p) => ({
-  id: p.id,
-  name: p.name,
-  color: COLORS[p.color],
-  status: p.status,
-  tone: p.statusTone,
-  isAI: p.isAI,
-}));
-
 /**
  * Roster de la sala y, sobre todo, el salto de cámara: pulsar a alguien lleva
  * tu vista a la suya. Es el gesto del paso 4 del guion —«ambos usuarios ven la
  * corrección y asienten con el modelo de cámara 3D»— convertido en un control.
+ *
+ * La lista sale entera de la presencia de Portal. Mientras el canal no está
+ * listo se queda vacía, y eso es lo que se enseña: un roster de ejemplo daría
+ * por presente a gente que no ha entrado, que es justo lo que no puede pasar en
+ * una herramienta donde se mira quién está para saber con quién hablas.
  */
 export function ParticipantsPanel() {
-  const { participants, cameras, cursors } = useRoom();
+  const { participants, cameras, cursors, status } = useRoom();
   const { flyTo } = useEditor();
 
-  const rows: Row[] = participants.length
-    ? participants.map((p) => {
-        const cam = cameras[p.id];
-        // Si aún no ha difundido su encuadre, se mira a donde está su cursor:
-        // peor que ver lo que ve, pero lleva al sitio correcto igual.
-        const cursor = cursors.find((c) => c.id === p.id);
-        return {
-          id: p.id,
-          name: p.name,
-          color: p.color,
-          status: p.status,
-          tone: p.isSelf ? "violet" : "green",
-          isAI: p.id === AI_SENDER,
-          view: p.isSelf
-            ? undefined
-            : cam
-              ? { eye: cam.eye, target: cam.target }
-              : cursor
-                ? viewOnPoint(cursor.x, cursor.z)
-                : undefined,
-        };
-      })
-    : SEED;
+  const rows: Row[] = participants.map((p) => {
+    // Cursores y cámaras viajan por el canal de señales, que tiene sus propios
+    // ids: se cruzan por `signalId`, no por el de la fila.
+    const cam = p.signalId ? cameras[p.signalId] : undefined;
+    // Si aún no ha difundido su encuadre, se mira a donde está su cursor:
+    // peor que ver lo que ve, pero lleva al sitio correcto igual.
+    const cursor = cursors.find((c) => c.id === p.signalId);
+    return {
+      id: p.id,
+      name: p.name,
+      color: p.color,
+      status: p.status,
+      tone: p.isSelf ? "violet" : "green",
+      isAI: p.id === AI_SENDER,
+      view: p.isSelf
+        ? undefined
+        : cam
+          ? { eye: cam.eye, target: cam.target }
+          : cursor
+            ? viewOnPoint(cursor.x, cursor.z)
+            : undefined,
+    };
+  });
 
   return (
     <Panel className="flex min-h-0 flex-col overflow-hidden px-4 pb-3.5 pt-3.5">
       <SectionTitle className="mb-3">Participantes ({rows.length})</SectionTitle>
+      {rows.length === 0 && (
+        <p className="text-[11.5px] leading-[1.5] text-dim">
+          {status === "ready" ? "Nadie más en la sala." : "Conectando con la sala…"}
+        </p>
+      )}
       <ul className="scroll-thin min-h-0 flex-1 space-y-[3px] overflow-y-auto">
         {rows.map((p) => (
           <li key={p.id}>

@@ -1,7 +1,12 @@
 /**
- * BRUTAL-140 — Single source of truth for plot geometry, roster and mock state.
- * Everything the realtime layer (Portal) will eventually drive lives here first
- * as static data, so swapping in live state is a one-file change per surface.
+ * BRUTAL-140 — Constantes del proyecto: geometría de la parcela, paleta de
+ * herramientas y materiales.
+ *
+ * Lo que era estado de maqueta ya no está aquí. Ni participantes de ejemplo, ni
+ * avatares de sesión, ni una conversación de arranque, ni una frase puesta en
+ * boca del agente: todo eso se pintaba como si fuera real y no lo era. La gente
+ * de la sala sale de la presencia de Portal, y lo que dice el agente sale de lo
+ * que el agente haya dicho. Cuando no hay nada, se dice que no hay nada.
  */
 import type { MaterialId } from "./entities";
 
@@ -23,61 +28,6 @@ export const COLORS: Record<UserColor, string> = {
   amber: "#f59e0b",
   cyan: "#06b6d4",
 };
-
-export type Participant = {
-  id: string;
-  name: string;
-  color: UserColor;
-  status: string;
-  statusTone: "muted" | "green" | "blue" | "violet";
-  isAI?: boolean;
-  /** Posicion del cursor volumetrico dentro de la malla (x, y, z) en metros. */
-  cursor: [number, number, number];
-};
-
-export const PARTICIPANTS: Participant[] = [
-  {
-    id: "diego",
-    name: "Diego",
-    color: "blue",
-    status: "Editando",
-    statusTone: "muted",
-    cursor: [-2.6, 0.05, 6.4],
-  },
-  {
-    id: "claudia",
-    name: "Claudia",
-    color: "violet",
-    status: "Moviendo muro",
-    statusTone: "green",
-    cursor: [-2.9, 0.05, -7.8],
-  },
-  {
-    id: "mateo",
-    name: "Mateo",
-    color: "green",
-    status: "Vista 3D",
-    statusTone: "blue",
-    cursor: [3.0, 0.05, -3.4],
-  },
-  {
-    id: "ai_architect",
-    name: "AI Architect",
-    color: "violet",
-    status: "Diseñando",
-    statusTone: "violet",
-    isAI: true,
-    cursor: [0.2, 0.05, 0.6],
-  },
-];
-
-export const SESSION_AVATARS = [
-  { id: "a1", initials: "DG", ring: "#3b82f6", from: "#3f4b63", to: "#232a36" },
-  { id: "a2", initials: "CL", ring: "#f59e0b", from: "#6b4a2a", to: "#33241a" },
-  { id: "a3", initials: "MT", ring: "#a855f7", from: "#4a2f6b", to: "#281a38" },
-  { id: "a4", initials: "SV", ring: "#3b82f6", from: "#2f4a6b", to: "#1a2638" },
-  { id: "a5", initials: "RN", ring: "#22c55e", from: "#2c5a3c", to: "#1a2f22" },
-];
 
 export type ToolId =
   | "mover"
@@ -139,40 +89,6 @@ export const MATERIALS: {
   { id: "madera", label: "Madera\nRoble Claro", swatch: "#b5834a", texture: "wood" },
 ];
 
-export type ChatMessage = {
-  id: string;
-  author: string;
-  authorId: string;
-  time: string;
-  body: string;
-  isAI?: boolean;
-};
-
-export const CHAT_SEED: ChatMessage[] = [
-  {
-    id: "m1",
-    author: "Mateo",
-    authorId: "mateo",
-    time: "12:38 PM",
-    body: "¿Qué tal si abrimos un patio aquí?",
-  },
-  {
-    id: "m2",
-    author: "AI Architect",
-    authorId: "ai_architect",
-    time: "12:39 PM",
-    body: "Buena idea. Mejoraría la ventilación cruzada.",
-    isAI: true,
-  },
-  {
-    id: "m3",
-    author: "Claudia",
-    authorId: "claudia",
-    time: "12:40 PM",
-    body: "Me gusta, y podríamos agregar vegetación.",
-  },
-];
-
 export type QuickViewId = "plan" | "iso" | "section" | "facade";
 
 export const QUICK_VIEWS: { id: QuickViewId; label: string }[] = [
@@ -182,9 +98,3 @@ export const QUICK_VIEWS: { id: QuickViewId; label: string }[] = [
   { id: "facade", label: "Fachada Frontal" },
 ];
 
-export const AI_SUGGESTION = {
-  message: "He detectado un posible problema de iluminación y circulación.",
-  messageTime: "12:40 PM",
-  suggestion:
-    "Mover muro 0.80m hacia la izquierda para mejorar el ingreso de luz natural y la circulación.",
-};

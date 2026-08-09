@@ -5,7 +5,6 @@ import type { ChannelStatus } from "@portalsdk/core";
 import { Check, Plus } from "@/components/icons";
 import { useRoom } from "@/components/providers/RoomProvider";
 import { Avatar, Dot, cx } from "./primitives";
-import { SESSION_AVATARS } from "@/lib/constants";
 
 function fmt(total: number) {
   const h = Math.floor(total / 3600);
@@ -97,18 +96,18 @@ export function TopBar() {
 
       {/* Roster + salida */}
       <div className="flex items-center gap-3.5">
+        {/* Una cara por persona conectada. Vacío mientras Portal no responde:
+            unos avatares de relleno harían parecer llena una sala que no lo está. */}
         <div className="flex items-center -space-x-2.5">
-          {participants.length
-            ? participants.slice(0, 4).map((p) => (
-                <Avatar
-                  key={p.id}
-                  initials={p.name.slice(0, 2).toUpperCase()}
-                  from={p.color}
-                  to="#25252a"
-                  ring={p.isSelf ? p.color : undefined}
-                />
-              ))
-            : SESSION_AVATARS.map((a) => <Avatar key={a.id} {...a} />)}
+          {participants.slice(0, 4).map((p) => (
+            <Avatar
+              key={p.id}
+              initials={p.name.slice(0, 2).toUpperCase()}
+              from={p.color}
+              to="#25252a"
+              ring={p.isSelf ? p.color : undefined}
+            />
+          ))}
         </div>
         <button
           type="button"

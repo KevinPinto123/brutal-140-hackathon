@@ -42,7 +42,7 @@ export function Scene() {
     removeEntity,
     meId,
   } = useRoom();
-  const { tool, selected, setSelected, view } = useEditor();
+  const { tool, selected, setSelected, view, projection, grid, overlays, shot } = useEditor();
 
   const kind = PLACEABLE[tool];
 
@@ -100,6 +100,10 @@ export function Scene() {
         selected={selected}
         held={held}
         view={view}
+        projection={projection}
+        grid={grid}
+        overlays={overlays}
+        shot={shot}
         canPlace={!!kind && !locked}
         locked={locked}
         onPoint={publishCursor}

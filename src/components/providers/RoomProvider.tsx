@@ -16,6 +16,7 @@ import type {
   Message,
 } from "@portalsdk/core";
 import { PortalProvider, useChannel } from "@portalsdk/react";
+import { JoinGate } from "@/components/ui/JoinGate";
 import { portal } from "@/lib/portal/client";
 import type { Entity } from "@/lib/entities";
 import {
@@ -23,14 +24,17 @@ import {
   EVT,
   ROOM_CHANNEL,
   SIGNAL_CHANNEL,
+  type ByeEvent,
   type CameraEvent,
   type ChatEvent,
   type CursorEvent,
   type DragEvent,
   type EntityEvent,
   type GeometryEvent,
+  type HelloEvent,
   type LiveCamera,
   type LiveCursor,
+  type LivePeer,
   type RoomEvent,
   type RoomParticipant,
   type SunDragEvent,
@@ -42,7 +46,9 @@ import {
   fallbackColor,
   getIdentity,
   getServerIdentity,
+  packName,
   subscribeIdentity,
+  unpackName,
   type Identity,
 } from "@/lib/portal/identity";
 
@@ -53,6 +59,9 @@ const DRAG_TTL = 2_000;
 const SUN_TTL = 2_500;
 /** La cámara se queda quieta al mirar: aguanta más que el puntero. */
 const CAMERA_TTL = 30_000;
+/** Cadencia del latido de presencia y margen antes de dar a alguien por ido. */
+const BEAT_INTERVAL = 4_000;
+const PEER_TTL = 13_000;
 /** Techo de publicación de señales continuas: ~8 Hz. */
 const SIGNAL_INTERVAL = 120;
 /** Y solo si el puntero se movió algo apreciable (metros). */
@@ -164,20 +173,28 @@ export function useRoom(): RoomValue {
   return value;
 }
 
-function RoomChannel({ children, onLeave }: { children: React.ReactNode; onLeave: () => void }) {
+/**
+ * El canal solo se monta con una identidad ya escrita, así que aquí `identity`
+ * nunca es null: no hay que defender cada publicación con un nombre de relleno
+ * («Alguien», «Anónimo»), que era la última forma que le quedaba a la sala de
+ * inventarse un usuario.
+ */
+function RoomChannel({
+  identity,
+  children,
+  onLeave,
+}: {
+  identity: Identity;
+  children: React.ReactNode;
+  onLeave: () => void;
+}) {
   const [cursors, setCursors] = useState<Record<string, LiveCursor>>({});
   const [cameras, setCameras] = useState<Record<string, LiveCamera>>({});
   const [drags, setDrags] = useState<Record<string, Ghost>>({});
+  /** Quién ha dado señales de vida hace poco, indexado por su id de señales. */
+  const [peers, setPeers] = useState<Record<string, LivePeer>>({});
   /** Hora solar en vuelo (de cualquiera), aún sin confirmar en el log. */
   const [sunDraft, setSunDraft] = useState<{ hour: number; at: number } | null>(null);
-
-  // Identidad solo en cliente (localStorage): en el prerender es null, así que
-  // la hidratación coincide y el snapshot real entra en el primer render de cliente.
-  const identity = useSyncExternalStore<Identity | null>(
-    subscribeIdentity,
-    getIdentity,
-    getServerIdentity,
-  );
 
   // Canal de estado: su historial se reduce a la geometría compartida.
   const { messages, send, status, presence, me, setMetadata } = useChannel<RoomEvent>({
@@ -236,6 +253,31 @@ function RoomChannel({ children, onLeave }: { children: React.ReactNode; onLeave
       if (msg.type === EVT.sunDrag) {
         const s = msg.content as SunDragEvent;
         setSunDraft({ hour: clampHour(s.hour), at: Date.now() });
+        return;
+      }
+
+      if (msg.type === EVT.hello) {
+        const h = msg.content as HelloEvent;
+        setPeers((prev) => ({
+          ...prev,
+          [msg.sender.id]: { ...h, id: msg.sender.id, at: Date.now() },
+        }));
+        return;
+      }
+
+      // Una despedida explícita no espera al barrido: quien se va desaparece ya.
+      // Se retira por emisor y también por el `sid` que declara, por si su sesión
+      // de señales no fuera la que dejó el latido apuntado.
+      if (msg.type === EVT.bye) {
+        const gone = (msg.content as ByeEvent).sid;
+        setPeers((prev) => {
+          const next = Object.fromEntries(
+            Object.entries(prev).filter(
+              ([id, p]) => id !== msg.sender.id && !(gone && p.sid === gone),
+            ),
+          );
+          return Object.keys(next).length === Object.keys(prev).length ? prev : next;
+        });
       }
     },
   });
@@ -288,9 +330,66 @@ function RoomChannel({ children, onLeave }: { children: React.ReactNode; onLeave
 
   // Publicamos nombre/color como metadata de presencia (presentación, no authz).
   useEffect(() => {
-    if (!identity) return;
-    setMetadata({ name: identity.name, color: identity.color });
+    setMetadata({ name: packName(identity.name), color: identity.color });
   }, [identity, setMetadata]);
+
+  /**
+   * Prueba de vida.
+   *
+   * La presencia del servidor es un censo generoso: con clave anónima cada
+   * recarga acuña una sesión nueva y la anterior sigue apuntada un buen rato,
+   * así que quien se había ido —o quien había recargado tres veces— seguía
+   * saliendo «en línea». Eso son usuarios falsos con otro disfraz.
+   *
+   * El latido lo corrige desde el cliente: se late al conectar y cada
+   * `BEAT_INTERVAL` por el canal efímero, y quien no late no se pinta. Lleva el
+   * `sid` (la sesión en el canal de estado) porque el roster tiene que vivir en
+   * ese espacio de ids para que la elección de anfitrión siga siendo
+   * determinista: todos los clientes han de ordenar exactamente la misma lista.
+   */
+  const sid = me?.id;
+  const signalStatus = signals.status;
+
+  const beat = useCallback(() => {
+    void sendSignal({
+      type: EVT.hello,
+      content: { name: identity.name, color: identity.color, sid },
+    }).catch(noop);
+  }, [sendSignal, identity, sid]);
+
+  useEffect(() => {
+    if (signalStatus !== "ready") return;
+    beat();
+    const timer = setInterval(beat, BEAT_INTERVAL);
+    return () => clearInterval(timer);
+  }, [signalStatus, beat]);
+
+  /**
+   * La despedida. No se espera a que confirme: si no llegara —red caída, el
+   * proceso muerto de golpe— el TTL retira igual. Acelera, no sostiene.
+   */
+  const sayBye = useCallback(() => {
+    void sendSignal({ type: EVT.bye, content: { sid } }).catch(noop);
+  }, [sendSignal, sid]);
+
+  /** Salir de verdad: primero la despedida, después soltar el canal. */
+  const leave = useCallback(() => {
+    sayBye();
+    onLeave();
+  }, [sayBye, onLeave]);
+
+  /**
+   * Recargar o cerrar la pestaña no pasa por `leave`, y React tampoco ejecuta
+   * limpiezas de efecto al descargar la página: sin esto, la sesión que se va
+   * seguiría viva en el recuerdo de los demás hasta agotar `PEER_TTL`. Eso es
+   * exactamente lo que se veía al recargar tres veces seguidas —tres filas de
+   * la misma persona— y lo que hace que dure trece segundos en vez de uno.
+   * `pagehide` es el último momento fiable para despedirse.
+   */
+  useEffect(() => {
+    window.addEventListener("pagehide", sayBye);
+    return () => window.removeEventListener("pagehide", sayBye);
+  }, [sayBye]);
 
   // Barrido de señales caducas (una desconexión brusca no emite "leave" al instante).
   useEffect(() => {
@@ -299,6 +398,7 @@ function RoomChannel({ children, onLeave }: { children: React.ReactNode; onLeave
       setCursors((prev) => prune(prev, now - CURSOR_TTL));
       setCameras((prev) => prune(prev, now - CAMERA_TTL));
       setDrags((prev) => prune(prev, now - DRAG_TTL));
+      setPeers((prev) => prune(prev, now - PEER_TTL));
       // Al soltar el control, el borrador aguanta lo que tarda su mensaje
       // durable en volver; para entonces ambos valores ya coinciden y retirarlo
       // no se nota.
@@ -315,7 +415,6 @@ function RoomChannel({ children, onLeave }: { children: React.ReactNode; onLeave
       cursorStatus = "explorando",
       holding: string | null = null,
     ) => {
-      if (!identity) return;
       const now = Date.now();
       // Agarrar o soltar un volumen es un cambio de estado, no ruido de puntero:
       // pasa la puerta aunque el ratón esté quieto.
@@ -363,7 +462,6 @@ function RoomChannel({ children, onLeave }: { children: React.ReactNode; onLeave
    */
   const publishCamera = useCallback(
     (eye: Vec3, target: Vec3) => {
-      if (!identity) return;
       const now = Date.now();
       if (now - local.lastCameraAt < SIGNAL_INTERVAL) return;
       const moved = Math.hypot(
@@ -418,10 +516,7 @@ function RoomChannel({ children, onLeave }: { children: React.ReactNode; onLeave
     (hour: number) => {
       const h = clampHour(hour);
       setSunDraft({ hour: h, at: Date.now() });
-      void send({
-        type: EVT.sun,
-        content: { hour: h, name: identity?.name ?? "Alguien" },
-      }).catch(noop);
+      void send({ type: EVT.sun, content: { hour: h, name: identity.name } }).catch(noop);
     },
     [send, identity],
   );
@@ -449,10 +544,7 @@ function RoomChannel({ children, onLeave }: { children: React.ReactNode; onLeave
   const setLocked = useCallback(
     (next: boolean) => {
       if (replaying) return;
-      void send({
-        type: EVT.lock,
-        content: { locked: next, name: identity?.name ?? "Alguien" },
-      }).catch(noop);
+      void send({ type: EVT.lock, content: { locked: next, name: identity.name } }).catch(noop);
     },
     [send, identity, replaying],
   );
@@ -470,18 +562,14 @@ function RoomChannel({ children, onLeave }: { children: React.ReactNode; onLeave
   /** Vacía la parcela de una sola vez; el reductor lo trata como un corte. */
   const resetPlot = useCallback(() => {
     if (locked) return;
-    void send({ type: EVT.reset, content: { name: identity?.name ?? "Alguien" } }).catch(noop);
+    void send({ type: EVT.reset, content: { name: identity.name } }).catch(noop);
   }, [send, identity, locked]);
 
   const sendChat = useCallback(
     (text: string) => {
       void send({
         type: EVT.chat,
-        content: {
-          text,
-          name: identity?.name ?? "Anónimo",
-          color: identity?.color ?? "#8b5cf6",
-        },
+        content: { text, name: identity.name, color: identity.color },
       }).catch(noop);
     },
     [send, identity],
@@ -513,33 +601,69 @@ function RoomChannel({ children, onLeave }: { children: React.ReactNode; onLeave
     [room.entities, drags, replaying],
   );
 
+  /**
+   * Quién está en la sala.
+   *
+   * La lista se construye con los latidos, no con el censo del servidor: cada
+   * fila es alguien que ha dado señales de vida en los últimos `PEER_TTL`. La
+   * presencia de Portal se sigue leyendo para el nombre y el color —los publica
+   * su dueño como metadata— pero ya no decide quién está, que era de donde
+   * salían los duplicados y los que ya se habían ido.
+   *
+   * Cada fila se identifica por el `sid` del peer (su sesión en el canal de
+   * estado) y guarda aparte su `signalId`, que es por donde llegan cursores y
+   * cámaras. Son dos espacios de ids distintos y cruzarlos a mano era un error
+   * silencioso: `cursors[p.id]` nunca acertaba, así que el estado de todo el
+   * mundo se quedaba en «En línea» y el salto a la vista de otro no encontraba
+   * su cámara.
+   */
   const participants = useMemo<RoomParticipant[]>(() => {
-    const rows = detailedParticipants(presence).map((p) => {
-      const meta = p.metadata ?? {};
-      const live = cursors[p.id];
-      const isSelf = p.id === me?.id;
-      return {
-        id: p.id,
-        name:
-          (typeof meta.name === "string" && meta.name) ||
-          (isSelf ? identity?.name : undefined) ||
-          "Invitado",
-        color:
-          (typeof meta.color === "string" && meta.color) ||
-          (isSelf ? identity?.color : undefined) ||
-          fallbackColor(p.id),
-        status: isSelf ? "Tú" : (live?.status ?? "En línea"),
-        isSelf,
-      };
-    });
+    const meta = new Map(detailedParticipants(presence).map((p) => [p.id, p.metadata ?? {}]));
+    const metaName = (id?: string) => {
+      const value = id ? meta.get(id)?.name : undefined;
+      return typeof value === "string" && value ? unpackName(value) : "";
+    };
+    const metaColor = (id?: string) => {
+      const value = id ? meta.get(id)?.color : undefined;
+      return typeof value === "string" && value ? value : "";
+    };
 
-    // El Arquitecto publica por HTTP, así que no abre sesión de presencia. Entra
-    // en la lista mientras su cursor siga vivo: el README lo quiere como un
-    // miembro más de la sala, no como un servicio externo.
+    // Uno mismo entra siempre: se sabe de sobra que está: es quien mira.
+    const rows: RoomParticipant[] = [
+      {
+        id: me?.id ?? "self",
+        signalId: signals.me?.id,
+        name: identity.name,
+        color: identity.color,
+        status: "Tú",
+        isSelf: true,
+      },
+    ];
+
+    for (const peer of Object.values(peers)) {
+      // Un latido sin `sid` es de alguien cuyo canal de estado aún no ha
+      // abierto; entrará en la lista en cuanto lo tenga, un latido después.
+      if (!peer.sid || peer.sid === me?.id) continue;
+      if (rows.some((r) => r.id === peer.sid)) continue;
+      const live = cursors[peer.id];
+      rows.push({
+        id: peer.sid,
+        signalId: peer.id,
+        name: peer.name || metaName(peer.sid) || "Conectando…",
+        color: peer.color || metaColor(peer.sid) || fallbackColor(peer.sid),
+        status: live?.status ?? "En línea",
+        isSelf: false,
+      });
+    }
+
+    // El Arquitecto publica por HTTP, así que no abre sesión de presencia ni
+    // late. Entra en la lista mientras su cursor siga vivo: el README lo quiere
+    // como un miembro más de la sala, no como un servicio externo.
     const agent = cursors[AI_SENDER];
     if (agent) {
       rows.push({
         id: AI_SENDER,
+        signalId: AI_SENDER,
         name: agent.name,
         color: agent.color,
         status: agent.status,
@@ -548,7 +672,7 @@ function RoomChannel({ children, onLeave }: { children: React.ReactNode; onLeave
     }
 
     return rows;
-  }, [presence, cursors, me?.id, identity]);
+  }, [presence, peers, cursors, me?.id, signals.me?.id, identity]);
 
   const liveCursors = useMemo(() => Object.values(cursors), [cursors]);
 
@@ -596,10 +720,7 @@ function RoomChannel({ children, onLeave }: { children: React.ReactNode; onLeave
         }
         // La hora se reemite siempre: si se omitiera cuando coincide con el
         // mediodía, un `sun.set` viejo que sobreviviera al truncado ganaría.
-        await send({
-          type: EVT.sun,
-          content: { hour: live.hour, name: identity?.name ?? "Compactación" },
-        });
+        await send({ type: EVT.sun, content: { hour: live.hour, name: identity.name } });
         if (live.lockedBy) {
           await send({
             type: EVT.lock,
@@ -646,7 +767,7 @@ function RoomChannel({ children, onLeave }: { children: React.ReactNode; onLeave
       setSun,
       setLocked,
       resetPlot,
-      leave: onLeave,
+      leave,
     }),
     [
       status,
@@ -678,7 +799,7 @@ function RoomChannel({ children, onLeave }: { children: React.ReactNode; onLeave
       setSun,
       setLocked,
       resetPlot,
-      onLeave,
+      leave,
     ],
   );
 
@@ -701,43 +822,37 @@ function prune<T extends { at: number }>(map: Record<string, T>, cutoff: number)
 /**
  * Provider raíz: cliente Portal (anónimo con pk_) + estado de la sala lab_140.
  *
+ * La identidad se lee aquí arriba y hace de llave: sin nombre no se monta
+ * `RoomChannel`, así que no se abre ningún canal y este cliente no existe para
+ * la sala. Antes se entraba solo y la app te ponía un nombre al azar, con lo
+ * que un roster podía llenarse de gente que nadie había visto entrar.
+ *
+ * Se lee con `useSyncExternalStore` porque vive en localStorage: en el
+ * prerender del servidor todavía no hay nada, así que el snapshot del servidor
+ * es null, la hidratación coincide y el nombre real entra en el primer render
+ * de cliente.
+ *
  * Salir desmonta el canal, que es la única forma honesta de irse: se sueltan
  * las suscripciones y la presencia de este cliente cae para todos los demás.
  * El laboratorio no se toca —vive en el log— y volver a entrar lo reconstruye.
  */
 export function RoomProvider({ children }: { children: React.ReactNode }) {
-  const [joined, setJoined] = useState(true);
+  const identity = useSyncExternalStore<Identity | null>(
+    subscribeIdentity,
+    getIdentity,
+    getServerIdentity,
+  );
+  const [left, setLeft] = useState(false);
 
   return (
     <PortalProvider client={portal}>
-      {joined ? (
-        <RoomChannel onLeave={() => setJoined(false)}>{children}</RoomChannel>
+      {identity && !left ? (
+        <RoomChannel identity={identity} onLeave={() => setLeft(true)}>
+          {children}
+        </RoomChannel>
       ) : (
-        <Lobby onJoin={() => setJoined(true)} />
+        <JoinGate identity={identity} onEnter={() => setLeft(false)} />
       )}
     </PortalProvider>
-  );
-}
-
-function Lobby({ onJoin }: { onJoin: () => void }) {
-  return (
-    <main className="flex h-screen w-screen items-center justify-center bg-ink">
-      <div className="w-[420px] rounded-[4px] border border-line bg-panel px-8 py-9">
-        <h1 className="text-[21px] font-bold leading-none tracking-[-0.02em] text-white">
-          Has salido de la sesión
-        </h1>
-        <p className="mt-3.5 text-[12.5px] leading-[1.6] text-muted">
-          Tu presencia ya no aparece en la sala. El laboratorio sigue donde estaba: vive
-          en el historial de Portal, no en esta pestaña.
-        </p>
-        <button
-          type="button"
-          onClick={onJoin}
-          className="mt-7 w-full rounded-[4px] border border-accent bg-accent px-4 py-3 text-[13px] leading-none text-white transition-colors hover:bg-accent-2"
-        >
-          Volver a entrar
-        </button>
-      </div>
-    </main>
   );
 }

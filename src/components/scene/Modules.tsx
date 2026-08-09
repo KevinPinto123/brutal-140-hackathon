@@ -53,12 +53,15 @@ function Module({
   selected,
   dragging,
   heldBy,
+  overlays,
   onGrab,
 }: {
   entity: Entity;
   selected: boolean;
   dragging: boolean;
   heldBy?: HeldBy;
+  /** Capa de anotación encendida: lo que se dibuja para leer, no para habitar. */
+  overlays: boolean;
   onGrab: (e: ThreeEvent<PointerEvent>, id: string) => void;
 }) {
   // El equipamiento del laboratorio no es arquitectura: se lee metálico y con
@@ -103,7 +106,7 @@ function Module({
       )}
 
       {/* Firma térmica: el disco crece con los kW disipados. */}
-      {kw > 0 && (
+      {overlays && kw > 0 && (
         <mesh position={[0, 0.014, 0]} rotation={[-Math.PI / 2, 0, 0]} raycast={NO_HIT}>
           <ringGeometry args={[radius * 0.82, radius, 56]} />
           <meshBasicMaterial color={heat} transparent opacity={0.42} depthWrite={false} />
@@ -112,7 +115,7 @@ function Module({
 
       {/* Aristas: el concreto expuesto se lee por su canto. Solo la arquitectura
           las lleva; alrededor de un equipo, esa caja parecería una jaula. */}
-      {arch && (
+      {overlays && arch && (
         <Line
           points={edges(entity.w, entity.h, entity.d)}
           color="#f3f1ee"
@@ -131,7 +134,7 @@ function Module({
         <>
           <Halo entity={entity} color={heldBy.color} pad={0.09} />
           <Html
-            position={[0, entity.h + (selected ? 0.72 : 0.35), 0]}
+            position={[0, entity.h + (selected && overlays ? 0.72 : 0.35), 0]}
             center
             zIndexRange={[54, 0]}
             style={{ pointerEvents: "none", userSelect: "none" }}
@@ -146,7 +149,9 @@ function Module({
         </>
       )}
 
-      {selected && (
+      {/* Cota de la selección. Se va con las anotaciones; el halo y la funda se
+          quedan, porque no describen el proyecto sino lo que estás tocando. */}
+      {overlays && selected && (
         <Html
           position={[0, entity.h + 0.35, 0]}
           center
@@ -191,6 +196,7 @@ export function Modules({
   selected,
   dragId,
   held = {},
+  overlays = true,
   onGrab,
 }: {
   entities: Entity[];
@@ -198,6 +204,7 @@ export function Modules({
   dragId: string | null;
   /** Volúmenes agarrados por otros peers, indexados por id de entidad. */
   held?: Record<string, HeldBy>;
+  overlays?: boolean;
   onGrab: (e: ThreeEvent<PointerEvent>, id: string) => void;
 }) {
   return (
@@ -209,6 +216,7 @@ export function Modules({
           selected={e.id === selected}
           dragging={e.id === dragId}
           heldBy={held[e.id]}
+          overlays={overlays}
           onGrab={onGrab}
         />
       ))}
